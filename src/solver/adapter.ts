@@ -12,3 +12,10 @@ export function toCubeJsString(state: CubeState): string {
   }
   return result
 }
+
+export function fromCubeJsString(faceString: string): CubeState {
+  if (faceString.length !== 54) {
+    throw new Error(`Invalid cube string length: ${faceString.length}`)
+  }
+  return faceString.split('') as CubeState
+}

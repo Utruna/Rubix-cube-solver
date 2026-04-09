@@ -13,6 +13,7 @@ interface CubeStore {
   scrambleAlg: string
   solutionMoves: Move[]
   currentMoveIndex: number
+  lastAppliedMove: { move: Move; sequence: number } | null
   solverStatus: SolverStatus
   solverError: string | null
   animStatus: AnimationStatus
@@ -30,11 +31,14 @@ interface CubeStore {
   setCurrentMoveIndex: (index: number) => void
 }
 
+let moveSequence = 0
+
 export const useCubeStore = create<CubeStore>((set, get) => ({
   cubeState: createSolvedState(),
   scrambleAlg: '',
   solutionMoves: [],
   currentMoveIndex: 0,
+  lastAppliedMove: null,
   solverStatus: 'idle',
   solverError: null,
   animStatus: 'idle',
@@ -45,6 +49,7 @@ export const useCubeStore = create<CubeStore>((set, get) => ({
     scrambleAlg: '',
     solutionMoves: [],
     currentMoveIndex: 0,
+    lastAppliedMove: null,
     solverStatus: 'idle',
     solverError: null,
     animStatus: 'idle',
@@ -58,17 +63,19 @@ export const useCubeStore = create<CubeStore>((set, get) => ({
       scrambleAlg: formatAlg(moves),
       solutionMoves: [],
       currentMoveIndex: 0,
+      lastAppliedMove: null,
       solverStatus: 'idle',
       solverError: null,
       animStatus: 'idle',
     })
   },
 
-  setCubeState: (state) => set({ cubeState: state }),
+  setCubeState: (state) => set({ cubeState: state, lastAppliedMove: null }),
 
   setSolution: (moves) => set({
     solutionMoves: moves,
     currentMoveIndex: 0,
+    lastAppliedMove: null,
     animStatus: 'idle',
   }),
 
@@ -82,7 +89,12 @@ export const useCubeStore = create<CubeStore>((set, get) => ({
     if (currentMoveIndex >= solutionMoves.length) return
     const move = solutionMoves[currentMoveIndex]
     const newState = applyMove(cubeState, move)
-    set({ cubeState: newState, currentMoveIndex: currentMoveIndex + 1 })
+    moveSequence += 1
+    set({
+      cubeState: newState,
+      currentMoveIndex: currentMoveIndex + 1,
+      lastAppliedMove: { move, sequence: moveSequence },
+    })
   },
 
   stepBackward: () => {
@@ -93,7 +105,12 @@ export const useCubeStore = create<CubeStore>((set, get) => ({
     const inverseMod = prevMove.modifier === '' ? "'" : prevMove.modifier === "'" ? '' : '2'
     const inverseMove = { face: prevMove.face, modifier: inverseMod as Move['modifier'] }
     const newState = applyMove(cubeState, inverseMove)
-    set({ cubeState: newState, currentMoveIndex: targetIndex })
+    moveSequence += 1
+    set({
+      cubeState: newState,
+      currentMoveIndex: targetIndex,
+      lastAppliedMove: { move: inverseMove, sequence: moveSequence },
+    })
   },
 
   playAnimation: () => set({ animStatus: 'playing' }),
