@@ -3,14 +3,14 @@ import { cloneState, faceOffset } from './state'
 
 function rotateFaceCW(state: CubeState, face: Face): void {
   const o = faceOffset(face)
-  const [a, b, c, d, e, f, g, h, ii] = [
+  const [a, b, c, d, e, f, g, h, i] = [
     state[o], state[o+1], state[o+2],
     state[o+3], state[o+4], state[o+5],
     state[o+6], state[o+7], state[o+8],
   ]
   state[o]   = g; state[o+1] = d; state[o+2] = a
   state[o+3] = h; state[o+4] = e; state[o+5] = b
-  state[o+6] = ii; state[o+7] = f; state[o+8] = c
+  state[o+6] = i; state[o+7] = f; state[o+8] = c
 }
 
 function cycle4(state: CubeState, positions: [number, number, number, number]): void {
