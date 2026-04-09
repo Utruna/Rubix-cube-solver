@@ -37,7 +37,7 @@ export function useSolver() {
         resolve({ moves: [], error: 'Worker not initialized' })
         return
       }
-      const id = Math.random().toString(36).slice(2)
+      const id = crypto.randomUUID()
       pendingRef.current.set(id, resolve)
       const faceString = toCubeJsString(state)
       workerRef.current.postMessage({ id, faceString })

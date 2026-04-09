@@ -7,6 +7,7 @@ interface Props {
   state: CubeState
 }
 
+// Pixel dimensions for each sticker cell and gap between cells
 const CELL = 28
 const GAP = 2
 

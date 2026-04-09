@@ -10,6 +10,9 @@ interface Props {
   state: CubeState
 }
 
+const CAMERA_POSITION: [number, number, number] = [3.5, 3, 3.5]
+const CAMERA_FOV = 45
+
 type FaceDir = { face: Face; normal: [number, number, number] }
 
 const FACE_DIRS: FaceDir[] = [
@@ -76,7 +79,7 @@ for (let x = -1; x <= 1; x++)
 export function Cube3D({ state }: Props) {
   return (
     <Canvas
-      camera={{ position: [3.5, 3, 3.5], fov: 45 }}
+      camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}
       style={{ width: '100%', height: '400px', background: '#1a1a2e' }}
       shadows
     >
