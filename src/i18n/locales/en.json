@@ -1,0 +1,23 @@
+{
+  "title": "Rubik's Cube Solver",
+  "scramble": "Scramble",
+  "solve": "Solve",
+  "reset": "Reset",
+  "solving": "Solving...",
+  "solved": "Solved!",
+  "error": "Error",
+  "play": "Play",
+  "pause": "Pause",
+  "stepForward": "Step →",
+  "stepBackward": "← Step",
+  "speed": "Speed",
+  "scrambleLabel": "Scramble",
+  "solutionLabel": "Solution",
+  "movesCount": "{{count}} moves",
+  "moveProgress": "Move {{current}} / {{total}}",
+  "language": "FR",
+  "noSolution": "No solution yet",
+  "cubeIsSolved": "Cube is already solved",
+  "view3d": "3D View",
+  "view2d": "2D Net"
+}
