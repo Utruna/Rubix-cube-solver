@@ -1,0 +1,23 @@
+{
+  "title": "Solveur de Rubik's Cube",
+  "scramble": "Mélanger",
+  "solve": "Résoudre",
+  "reset": "Réinitialiser",
+  "solving": "Résolution...",
+  "solved": "Résolu !",
+  "error": "Erreur",
+  "play": "Lire",
+  "pause": "Pause",
+  "stepForward": "Pas →",
+  "stepBackward": "← Pas",
+  "speed": "Vitesse",
+  "scrambleLabel": "Mélange",
+  "solutionLabel": "Solution",
+  "movesCount": "{{count}} mouvements",
+  "moveProgress": "Mouvement {{current}} / {{total}}",
+  "language": "EN",
+  "noSolution": "Pas encore de solution",
+  "cubeIsSolved": "Le cube est déjà résolu",
+  "view3d": "Vue 3D",
+  "view2d": "Vue 2D"
+}
