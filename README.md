@@ -13,10 +13,9 @@ A fully interactive Rubik's Cube solver built with **Vite + React + TypeScript**
 
 ## Demo
 
-<video controls width="720">
-	<source src="demo/20260520-1219-27.3425119.mp4" type="video/mp4" />
-	Your browser does not support the video tag. You can download it here: [Download demo video](demo/20260520-1219-27.3425119.mp4)
-</video>
+[![Demo vidéo](https://img.youtube.com/vi/fS9NTzPT9j8/0.jpg)](https://youtu.be/fS9NTzPT9j8)
+
+Watch the full demo on YouTube: https://youtu.be/fS9NTzPT9j8
 
 ## Tech Stack
 
