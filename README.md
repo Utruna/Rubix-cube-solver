@@ -11,6 +11,13 @@ A fully interactive Rubik's Cube solver built with **Vite + React + TypeScript**
 - ▶️ **Animated Playback** — Step through the solution move-by-move, forward or backward, with adjustable speed
 - 🌐 **i18n** — English / French language toggle via `i18next`
 
+## Demo
+
+<video controls width="720">
+	<source src="demo/20260520-1219-27.3425119.mp4" type="video/mp4" />
+	Your browser does not support the video tag. You can download it here: [Download demo video](demo/20260520-1219-27.3425119.mp4)
+</video>
+
 ## Tech Stack
 
 | Layer | Technology |
