@@ -11,6 +11,7 @@
   "stepForward": "Step →",
   "stepBackward": "← Step",
   "speed": "Speed",
+  "cubeSize": "Cube",
   "scrambleLabel": "Scramble",
   "solutionLabel": "Solution",
   "movesCount": "{{count}} moves",

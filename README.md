@@ -1,63 +1,86 @@
 # Rubik's Cube Solver
 
-A fully interactive Rubik's Cube solver built with **Vite + React + TypeScript**.
+Application interactive de Rubik's Cube construite avec Vite, React et TypeScript.
 
-## Features
+## Fonctionnalites
 
-- 🎲 **3D Cube View** — Interactive WebGL rendering via `@react-three/fiber` with drag-to-rotate
-- 🗺️ **2D Net View** — Flat unfolded cube diagram using SVG
-- 🔀 **Scramble** — Generates a random 25-move scramble sequence
-- 🧠 **Solve** — Computes the optimal solution using `cubejs` (Kociemba algorithm) in a Web Worker so the UI stays responsive
-- ▶️ **Animated Playback** — Step through the solution move-by-move, forward or backward, with adjustable speed
-- 🌐 **i18n** — English / French language toggle via `i18next`
+- Vue 3D interactive (drag + zoom) via Three.js et React Three Fiber
+- Vue 2D (net) en SVG
+- Support des tailles 2x2, 3x3, 4x4 et 5x5
+- Scramble adapte a la taille du cube
+	- 4x4 et 5x5: mouvements wide (Rw, Uw, etc.) pour melanger les centres
+- Resolution dans un Web Worker (UI non bloquante)
+- Lecture animee de la solution (pas a pas, vitesse reglable)
+- Bascule de langue EN/FR
 
-## Demo
+## Comportement du solver
 
-[![Demo vidéo](https://img.youtube.com/vi/fS9NTzPT9j8/0.jpg)](https://youtu.be/fS9NTzPT9j8)
+Le solver interne fonctionne en deux etapes:
 
-Watch the full demo on YouTube: https://youtu.be/fS9NTzPT9j8
+1. Strategie principale: inversion du scramble
+2. Fallback borne (actif en 3x3)
 
-## Tech Stack
+Implication pratique:
 
-| Layer | Technology |
+- Si le cube vient du bouton Scramble de l'application, la resolution fonctionne de maniere fiable
+- Pour des etats arbitraires complexes (notamment 4x4/5x5), le fallback peut ne pas trouver de solution
+
+## Stack technique
+
+| Couche | Technologie |
 |---|---|
 | Framework | React 18 + TypeScript |
 | Build Tool | Vite 6 |
-| 3D Rendering | Three.js + `@react-three/fiber` + `@react-three/drei` |
-| State Management | Zustand |
-| Solver | `cubejs` (Kociemba two-phase) in a Web Worker |
-| i18n | `i18next` + `react-i18next` |
+| 3D | Three.js + @react-three/fiber |
+| Etat global | React Context + useReducer |
+| i18n | Systeme interne React Context |
+| Solver | Web Worker + moteur interne |
 
 ## Architecture
 
-```
+```text
 src/
-├── cube/          # Pure cube logic (types, state, moves, notation, scramble)
-├── solver/        # Web Worker wrapper + cubejs adapter
-├── store/         # Zustand store (cube state, animation, solver status)
 ├── components/    # Cube3D, CubeNet, AnimationControls
-├── i18n/          # i18next setup + locale JSON files (en, fr)
-├── App.tsx        # Root component
-└── main.tsx       # Entry point
+├── cube/          # Types, etat NxN, moves, notation, scramble
+├── i18n/          # Provider/hook de traduction + locales EN/FR
+├── solver/        # Worker de resolution + hook useSolver
+├── store/         # Store global React Context + useReducer
+├── App.tsx        # UI principale
+└── main.tsx       # Bootstrap React
 ```
 
-The cube state is a flat 54-element array of face labels (`U R F D L B`), six stickers per face in row-major order. The solver runs entirely in a background Web Worker to avoid blocking the main thread.
-
-## Getting Started
+## Installation
 
 ```bash
 npm install
-npm run dev      # development server at http://localhost:5173
-npm run build    # production build → dist/
-npm run preview  # preview production build
 ```
 
-## Scripts
+## Lancer le projet
+
+```bash
+npm run dev
+```
+
+Serveur local: http://localhost:5173
+
+## Build de production
+
+```bash
+npm run build
+npm run preview
+```
+
+## Scripts disponibles
 
 | Script | Description |
 |---|---|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | TypeScript check + Vite production build |
-| `npm run preview` | Serve the `dist/` folder |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
+| npm run dev | Lance le serveur de developpement |
+| npm run build | Verifie TypeScript et construit la version production |
+| npm run preview | Sert le dossier dist localement |
+| npm run lint | Lance ESLint |
+| npm run format | Formate les fichiers source avec Prettier |
+
+## Documentation complementaire
+
+- Librairies et dependances: docs/libraries.md
+- Resume des changements: doc/change.rm

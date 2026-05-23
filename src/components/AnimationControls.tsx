@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '../i18n'
 import { useCubeStore } from '../store/cubeStore'
 
 export function AnimationControls() {
@@ -17,16 +17,26 @@ export function AnimationControls() {
   } = useCubeStore()
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const currentMoveIndexRef = useRef(currentMoveIndex)
+  const solutionMovesRef = useRef(solutionMoves)
+  const stepForwardRef = useRef(stepForward)
+  const pauseAnimationRef = useRef(pauseAnimation)
+
+  useEffect(() => {
+    currentMoveIndexRef.current = currentMoveIndex
+    solutionMovesRef.current = solutionMoves
+    stepForwardRef.current = stepForward
+    pauseAnimationRef.current = pauseAnimation
+  }, [currentMoveIndex, solutionMoves, stepForward, pauseAnimation])
 
   useEffect(() => {
     if (animStatus === 'playing') {
       intervalRef.current = setInterval(() => {
-        const { currentMoveIndex, solutionMoves, stepForward, pauseAnimation } = useCubeStore.getState()
-        if (currentMoveIndex >= solutionMoves.length) {
-          pauseAnimation()
+        if (currentMoveIndexRef.current >= solutionMovesRef.current.length) {
+          pauseAnimationRef.current()
           return
         }
-        stepForward()
+        stepForwardRef.current()
       }, 1000 / animSpeed)
     } else {
       if (intervalRef.current) {

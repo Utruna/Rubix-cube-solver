@@ -1,10 +1,12 @@
 export type Face = 'U' | 'R' | 'F' | 'D' | 'L' | 'B'
 export type StickerColor = 'U' | 'R' | 'F' | 'D' | 'L' | 'B'
+export type CubeSize = 2 | 3 | 4 | 5
 
 export type MoveModifier = '' | "'" | '2'
 export interface Move {
   face: Face
   modifier: MoveModifier
+  width?: number
 }
 
 export type CubeState = StickerColor[]

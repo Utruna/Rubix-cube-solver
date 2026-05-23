@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
-import type { CubeState, Move } from '../cube/types'
-import { toCubeJsString } from './adapter'
+import type { CubeSize, CubeState, Move } from '../cube/types'
 import { parseAlg } from '../cube/notation'
 
 type SolveResult = { moves: Move[]; error: string | null }
@@ -31,7 +30,7 @@ export function useSolver() {
     }
   }, [])
 
-  const solve = useCallback((state: CubeState): Promise<SolveResult> => {
+  const solve = useCallback((state: CubeState, cubeSize: CubeSize, scrambleAlg?: string): Promise<SolveResult> => {
     return new Promise((resolve) => {
       if (!workerRef.current) {
         resolve({ moves: [], error: 'Worker not initialized' })
@@ -39,8 +38,7 @@ export function useSolver() {
       }
       const id = crypto.randomUUID()
       pendingRef.current.set(id, resolve)
-      const faceString = toCubeJsString(state)
-      workerRef.current.postMessage({ id, faceString })
+      workerRef.current.postMessage({ id, cubeState: state, cubeSize, scrambleAlg })
     })
   }, [])
 

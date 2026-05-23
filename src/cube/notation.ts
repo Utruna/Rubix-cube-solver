@@ -5,11 +5,19 @@ const FACES = new Set<string>(FACE_ORDER)
 
 export function parseMove(token: string): Move | null {
   if (!token) return null
-  const face = token[0] as Face
+  const match = token.match(/^([URFDLB])(?:(\d*)w)?([2']?)$/)
+  if (!match) return null
+
+  const face = match[1] as Face
   if (!FACES.has(face)) return null
-  const modifier = (token[1] ?? '') as MoveModifier
+  const widthDigits = match[2] ?? ''
+  const modifier = (match[3] ?? '') as MoveModifier
   if (modifier !== '' && modifier !== "'" && modifier !== '2') return null
-  return { face, modifier }
+
+  const width = widthDigits ? Number(widthDigits) : match[0].includes('w') ? 2 : 1
+  if (!Number.isInteger(width) || width < 1) return null
+
+  return { face, modifier, width }
 }
 
 export function parseAlg(str: string): Move[] {
@@ -23,7 +31,10 @@ export function parseAlg(str: string): Move[] {
 }
 
 export function formatMove(move: Move): string {
-  return move.face + move.modifier
+  const width = move.width ?? 1
+  if (width <= 1) return move.face + move.modifier
+  const wide = width === 2 ? 'w' : `${width}w`
+  return `${move.face}${wide}${move.modifier}`
 }
 
 export function formatAlg(moves: Move[]): string {

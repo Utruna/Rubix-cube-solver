@@ -1,19 +1,18 @@
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import { useTranslation } from './i18n'
 import { useCubeStore } from './store/cubeStore'
 import { useSolver } from './solver/useSolver'
-import { Cube3D } from './components/Cube3D'
-import { CubeNet } from './components/CubeNet'
-import { AnimationControls } from './components/AnimationControls'
+import { Cube3D } from './components/Cube3D.tsx'
+import { CubeNet } from './components/CubeNet.tsx'
+import { AnimationControls } from './components/AnimationControls.tsx'
 import { isSolved } from './cube/state'
 import { formatAlg } from './cube/notation'
-import i18n from './i18n/index'
 
 function LanguageToggle() {
-  const { t } = useTranslation()
+  const { t, language, changeLanguage } = useTranslation()
   return (
     <button
-      onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'fr' : 'en')}
+      onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')}
       style={{ marginLeft: 'auto' }}
     >
       {t('language')}
@@ -24,11 +23,14 @@ function LanguageToggle() {
 export default function App() {
   const { t } = useTranslation()
   const {
+    cubeSize,
     cubeState,
     scrambleAlg,
     solutionMoves,
     solverStatus,
     solverError,
+    animStatus,
+    setCubeSize,
     scramble,
     reset,
     setSolution,
@@ -38,13 +40,13 @@ export default function App() {
   const { solve } = useSolver()
   const [activeView, setActiveView] = useState<'3d' | '2d'>('3d')
 
-  const solved = isSolved(cubeState)
+  const solved = isSolved(cubeState, cubeSize)
   const hasSolution = solutionMoves.length > 0
 
   const handleSolve = async () => {
     if (solved) return
     setSolverStatus('solving')
-    const result = await solve(cubeState)
+    const result = await solve(cubeState, cubeSize, scrambleAlg)
     if (result.error) {
       setSolverStatus('error', result.error)
     } else {
@@ -71,6 +73,19 @@ export default function App() {
 
       <main style={{ flex: 1, padding: 24, maxWidth: 960, margin: '0 auto', width: '100%' }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{t('cubeSize')}</span>
+            <select
+              value={cubeSize}
+              onChange={(e) => setCubeSize(Number(e.target.value) as 2 | 3 | 4 | 5)}
+              disabled={solverStatus === 'solving' || animStatus === 'playing'}
+            >
+              <option value={2}>2x2</option>
+              <option value={3}>3x3</option>
+              <option value={4}>4x4</option>
+              <option value={5}>5x5</option>
+            </select>
+          </label>
           <button onClick={scramble}>{t('scramble')}</button>
           <button
             onClick={handleSolve}
@@ -145,10 +160,10 @@ export default function App() {
           marginBottom: 16,
         }}>
           {activeView === '3d' ? (
-            <Cube3D state={cubeState} />
+            <Cube3D state={cubeState} size={cubeSize} />
           ) : (
             <div style={{ padding: 24, background: 'var(--surface)' }}>
-              <CubeNet state={cubeState} />
+              <CubeNet state={cubeState} size={cubeSize} />
             </div>
           )}
         </div>

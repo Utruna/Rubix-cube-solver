@@ -1,18 +1,19 @@
 import React from 'react'
-import type { CubeState, Face } from '../cube/types'
+import type { CubeSize, CubeState, Face } from '../cube/types'
 import { FACE_COLORS } from '../cube/types'
 import { faceOffset } from '../cube/state'
 
 interface Props {
   state: CubeState
+  size: CubeSize
 }
 
 // Pixel dimensions for each sticker cell and gap between cells
 const CELL = 28
 const GAP = 2
 
-export function CubeNet({ state }: Props) {
-  const faceSize = CELL * 3 + GAP * 2
+export function CubeNet({ state, size }: Props) {
+  const faceSize = CELL * size + GAP * (size - 1)
   const padding = 4
 
   const positions: Array<{ face: Face; row: number; col: number }> = [
@@ -36,10 +37,10 @@ export function CubeNet({ state }: Props) {
           return (
             <g key={face} transform={`translate(${x},${y})`}>
               <text x={faceSize / 2} y={-4} textAnchor="middle" fill="#aaa" fontSize={10}>{face}</text>
-              {Array.from({ length: 9 }, (_, i) => {
-                const r = Math.floor(i / 3)
-                const c = i % 3
-                const color = FACE_COLORS[state[faceOffset(face) + i] as Face]
+              {Array.from({ length: size * size }, (_, i) => {
+                const r = Math.floor(i / size)
+                const c = i % size
+                const color = FACE_COLORS[state[faceOffset(face, size) + i] as Face]
                 return (
                   <rect
                     key={i}
