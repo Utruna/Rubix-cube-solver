@@ -26,6 +26,7 @@ def health():
 
 
 @app.route('/api/detect', methods=['POST', 'OPTIONS'])
+@app.route('/detect', methods=['POST', 'OPTIONS'])
 def detect_cube():
     """
     Détecte l'état du cube à partir d'une image base64.
@@ -67,6 +68,7 @@ def detect_cube():
 
 
 @app.route('/api/debug-detect', methods=['POST', 'OPTIONS'])
+@app.route('/debug-detect', methods=['POST', 'OPTIONS'])
 def debug_detect():
     """
     Endpoint de debug - retourne une image annotée avec les stickers détectés.
@@ -87,8 +89,13 @@ def debug_detect():
         if ',' in image_data:
             image_data = image_data.split(',')[1]
 
-        logger.info("Processing image with debug...")
-        result = detector.detect_with_debug(image_data)
+        provider = (data.get('provider') or '').strip().lower()
+        if provider and provider not in {'auto', 'classic', 'ollama', 'yolo'}:
+            logger.error("Invalid provider in request: %s", provider)
+            return jsonify({'error': 'Invalid provider. Use auto, classic or ollama'}), 400
+
+        logger.info("Processing image with debug (provider=%s)...", provider or 'default')
+        result = detector.detect_with_debug(image_data, provider_override=provider or None)
 
         logger.info(f"Debug detection result: {result.get('contours_found')} contours found")
         return jsonify(result)

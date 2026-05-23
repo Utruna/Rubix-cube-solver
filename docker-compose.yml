@@ -20,6 +20,8 @@ services:
       - "5000:5000"
     environment:
       - FLASK_ENV=production
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_TIMEOUT_SECONDS=12
     networks:
       - cube-network
 

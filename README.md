@@ -70,10 +70,36 @@ Le mode `Debug live` peut utiliser un modele vision local via Ollama pour mieux 
 Variables d'environnement utiles:
 
 - `DETECTOR_PROVIDER=auto` ou `classic`
-- `OLLAMA_BASE_URL=http://localhost:11434`
-- `OLLAMA_VISION_MODEL=qwen2.5-vl:7b-instruct` ou un autre modele vision disponible localement
+- `OLLAMA_BASE_URL=http://localhost:11434` en local, ou `http://host.docker.internal:11434` si le backend tourne dans Docker Desktop
+- `OLLAMA_VISION_MODEL=qwen2.5vl:7b` ou un autre modele vision disponible localement
+- `OLLAMA_TIMEOUT_SECONDS=12` pour eviter d'attendre une minute avant fallback si Ollama ne repond pas
+
+Pour un mode modele optimise (moins de faux positifs qu'un fallback classique seul):
+
+- `DETECTOR_PROVIDER=auto`
+- `OLLAMA_VISION_MODEL=qwen2.5vl:7b`
+- `OLLAMA_BASE_URL=http://host.docker.internal:11434` (backend Docker sur Windows)
+
+Installer le modele:
+
+ollama pull qwen2.5vl:7b
 
 Si Ollama n'est pas disponible, le backend retombe automatiquement sur la detection classique.
+
+Si tu lances le backend dans Docker sur Windows, Ollama doit etre joignable depuis le conteneur via `http://host.docker.internal:11434`.
+
+Si tu lances le backend Docker depuis `backend/`, utilise bien le port Flask et un tag d'image explicite:
+
+```bash
+docker build -t rubix-cube-solver-backend ./backend
+docker run --name rubix-cube-solver-backend -p 5000:5000 rubix-cube-solver-backend
+
+# Pour un retour visuel instantane en debug (sans attente Ollama)
+docker run --name rubix-cube-solver-backend -e DETECTOR_PROVIDER=classic -p 5000:5000 rubix-cube-solver-backend
+
+# Pour forcer le mode modele vision optimise (Ollama)
+docker run --name rubix-cube-solver-backend -e DETECTOR_PROVIDER=auto -e OLLAMA_BASE_URL=http://host.docker.internal:11434 -e OLLAMA_VISION_MODEL=qwen2.5vl:7b -e OLLAMA_TIMEOUT_SECONDS=10 -p 5000:5000 rubix-cube-solver-backend
+```
 
 ## Build de production
 
@@ -102,6 +128,8 @@ docker build -t rubix-cube-solver .
 ```bash
 docker run --name rubix-cube-solver -p 8080:80 rubix-cube-solver
 ```
+
+Cette commande concerne le conteneur frontend Nginx, pas le backend Flask.
 
 Application disponible sur:
 

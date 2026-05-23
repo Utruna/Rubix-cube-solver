@@ -5,7 +5,7 @@ interface StickerInfo {
   index: number
   color: string
   position: { x: number; y: number; w: number; h: number }
-  hsv_mean: { h: number; s: number; v: number }
+  hsv_mean?: { h: number; s: number; v: number }
   confidence?: number
   notes?: string
 }
@@ -15,6 +15,9 @@ interface DebugResult {
   provider?: string
   model?: string
   contours_found: number
+  cube_present?: boolean
+  cube_presence_score?: number
+  presence_reason?: string
   stickers: StickerInfo[]
   debug_image: string
   warnings?: string[]
@@ -22,6 +25,8 @@ interface DebugResult {
   raw_response?: string
   error?: string
 }
+
+type DebugProvider = 'auto' | 'classic' | 'ollama' | 'yolo'
 
 export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -33,14 +38,20 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [lastDurationMs, setLastDurationMs] = useState<number | null>(null)
   const [tickCount, setTickCount] = useState(0)
+  const [selectedProvider, setSelectedProvider] = useState<DebugProvider>('auto')
   const isDetectingRef = useRef(false)
+
+  const getHsvMean = useCallback((sticker: StickerInfo) => {
+    return sticker.hsv_mean ?? { h: 0, s: 0, v: 0 }
+  }, [])
 
   const stickerConfidence = useCallback((sticker: StickerInfo) => {
     if (typeof sticker.confidence === 'number' && Number.isFinite(sticker.confidence)) {
       return Math.max(0, Math.min(100, Math.round(sticker.confidence)))
     }
 
-    const { color, hsv_mean } = sticker
+    const { color } = sticker
+    const hsv_mean = getHsvMean(sticker)
     const { h, s, v } = hsv_mean
 
     let score = 25
@@ -74,7 +85,7 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
 
     const mixed = Math.round(score * 0.45 + hueScore * 0.55)
     return Math.max(0, Math.min(100, mixed))
-  }, [])
+  }, [getHsvMean])
 
   const debugSummary = useMemo(() => {
     if (!debugResult?.stickers?.length) {
@@ -102,6 +113,19 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
       second: '2-digit',
     }).format(new Date(lastUpdatedAt))
   }, [lastUpdatedAt])
+
+  const getApiBaseUrl = useCallback(() => {
+    const configuredUrl = import.meta.env.VITE_API_URL as string | undefined
+    if (configuredUrl && configuredUrl.trim()) {
+      return configuredUrl.replace(/\/$/, '')
+    }
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:5000/api'
+    }
+
+    return '/api'
+  }, [])
 
   const startCamera = useCallback(async () => {
     try {
@@ -178,8 +202,11 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
         return
       }
 
-      const apiUrl = import.meta.env.VITE_API_URL || '/api'
+      const apiUrl = getApiBaseUrl()
       console.log('Sending debug request to:', `${apiUrl}/debug-detect`)
+
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000)
 
       const response = await fetch(`${apiUrl}/debug-detect`, {
         method: 'POST',
@@ -188,8 +215,11 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
         },
         body: JSON.stringify({
           image: frameData,
+          provider: selectedProvider,
         }),
+        signal: controller.signal,
       })
+      window.clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -198,19 +228,27 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
 
       const result: DebugResult = await response.json()
       setDebugResult(result)
+      if (result.success === false) {
+        setError(result.error || 'Aucune face de cube fiable détectée')
+      }
       setLastUpdatedAt(Date.now())
       setLastDurationMs(Math.round(performance.now() - startedAt))
       setTickCount((value) => value + 1)
       console.log('Debug result:', result)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Debug error'
+      const message =
+        err instanceof Error && err.name === 'AbortError'
+          ? 'Timeout de détection: le backend met trop de temps à répondre'
+          : err instanceof Error
+            ? err.message
+            : 'Debug error'
       console.error('Debug error:', message)
       setError(message)
     } finally {
       isDetectingRef.current = false
       setIsDetecting(false)
     }
-  }, [captureFrame])
+  }, [captureFrame, getApiBaseUrl, selectedProvider])
 
   useEffect(() => {
     if (!liveMode) {
@@ -261,6 +299,41 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
           {debugResult.face_hint && <span> · Face: {debugResult.face_hint}</span>}
         </div>
       )}
+
+      <div className="debug-provider-switch" role="group" aria-label="Méthode de détection">
+        <button
+          type="button"
+          className={`provider-switch-btn ${selectedProvider === 'auto' ? 'active' : ''}`}
+          onClick={() => setSelectedProvider('auto')}
+          disabled={isDetecting}
+        >
+          Auto
+        </button>
+        <button
+          type="button"
+          className={`provider-switch-btn ${selectedProvider === 'classic' ? 'active' : ''}`}
+          onClick={() => setSelectedProvider('classic')}
+          disabled={isDetecting}
+        >
+          Classique
+        </button>
+        <button
+          type="button"
+          className={`provider-switch-btn ${selectedProvider === 'ollama' ? 'active' : ''}`}
+          onClick={() => setSelectedProvider('ollama')}
+          disabled={isDetecting}
+        >
+          Ollama
+        </button>
+        <button
+          type="button"
+          className={`provider-switch-btn ${selectedProvider === 'yolo' ? 'active' : ''}`}
+          onClick={() => setSelectedProvider('yolo')}
+          disabled={isDetecting}
+        >
+          YOLO
+        </button>
+      </div>
 
       {debugResult?.warnings && debugResult.warnings.length > 0 && (
         <div className="debug-warnings">
@@ -349,6 +422,18 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
                   </span>
                 </p>
                 <p>
+                  <strong>Cube détecté:</strong>{' '}
+                  <span className={debugResult.success ? 'success' : 'warning'}>
+                    {debugResult.success ? 'Oui' : 'Non fiable'}
+                  </span>
+                </p>
+                <p>
+                  <strong>Score présence:</strong>{' '}
+                  <span className={(debugResult.cube_presence_score ?? 0) >= 55 ? 'success' : 'warning'}>
+                    {debugResult.cube_presence_score ?? 0}%
+                  </span>
+                </p>
+                <p>
                   <strong>Stickers analysés:</strong>{' '}
                   <span className={debugResult.stickers.length >= 9 ? 'success' : 'warning'}>
                     {debugResult.stickers.length}
@@ -382,10 +467,14 @@ export function DebugDetector({ liveMode = false }: { liveMode?: boolean }) {
                               <strong>#{sticker.index + 1}</strong> {sticker.color}
                             </p>
                             {sticker.notes && <small>{sticker.notes}</small>}
-                            <small>
-                              H: {sticker.hsv_mean.h} | S: {sticker.hsv_mean.s} | V:{' '}
-                              {sticker.hsv_mean.v}
-                            </small>
+                            {(() => {
+                              const hsv = getHsvMean(sticker)
+                              return (
+                                <small>
+                                  H: {hsv.h} | S: {hsv.s} | V: {hsv.v}
+                                </small>
+                              )
+                            })()}
                           </div>
                           <div className="sticker-confidence">{stickerConfidence(sticker)}%</div>
                         </div>
