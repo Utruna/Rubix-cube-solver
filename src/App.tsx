@@ -5,8 +5,11 @@ import { useSolver } from './solver/useSolver'
 import { Cube3D } from './components/Cube3D.tsx'
 import { CubeNet } from './components/CubeNet.tsx'
 import { AnimationControls } from './components/AnimationControls.tsx'
+import { CubeDetector } from './components/CubeDetector.tsx'
+import { DebugDetector } from './components/DebugDetector.tsx'
 import { isSolved } from './cube/state'
 import { formatAlg } from './cube/notation'
+import type { CubeState } from './cube/types'
 
 function LanguageToggle() {
   const { t, language, changeLanguage } = useTranslation()
@@ -22,6 +25,8 @@ function LanguageToggle() {
 
 export default function App() {
   const { t } = useTranslation()
+  const isDevMode =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   const {
     cubeSize,
     cubeState,
@@ -35,10 +40,13 @@ export default function App() {
     reset,
     setSolution,
     setSolverStatus,
+    setCubeState,
   } = useCubeStore()
 
   const { solve } = useSolver()
-  const [activeView, setActiveView] = useState<'3d' | '2d'>('3d')
+  const [activeView, setActiveView] = useState<'3d' | '2d' | 'detector' | 'debug'>(
+    isDevMode ? 'debug' : '3d',
+  )
 
   const solved = isSolved(cubeState, cubeSize)
   const hasSolution = solutionMoves.length > 0
@@ -53,6 +61,11 @@ export default function App() {
       setSolution(result.moves)
       setSolverStatus('solved')
     }
+  }
+
+  const handleCubeDetected = (detectedState: string[]) => {
+    setCubeState(detectedState as CubeState)
+    setActiveView('3d')
   }
 
   return (
@@ -151,6 +164,20 @@ export default function App() {
           >
             {t('view2d')}
           </button>
+          <button
+            onClick={() => setActiveView('detector')}
+            style={{ background: activeView === 'detector' ? 'var(--accent)' : undefined }}
+          >
+            📷 Detector
+          </button>
+          {isDevMode && (
+            <button
+              onClick={() => setActiveView('debug')}
+              style={{ background: activeView === 'debug' ? 'var(--accent)' : undefined }}
+            >
+              🛠️ Debug live
+            </button>
+          )}
         </div>
 
         <div style={{
@@ -161,10 +188,14 @@ export default function App() {
         }}>
           {activeView === '3d' ? (
             <Cube3D state={cubeState} size={cubeSize} />
-          ) : (
+          ) : activeView === '2d' ? (
             <div style={{ padding: 24, background: 'var(--surface)' }}>
               <CubeNet state={cubeState} size={cubeSize} />
             </div>
+          ) : activeView === 'debug' ? (
+            <DebugDetector liveMode />
+          ) : (
+            <CubeDetector onCubeDetected={handleCubeDetected} />
           )}
         </div>
 

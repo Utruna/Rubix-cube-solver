@@ -1,0 +1,146 @@
+.cube-detector {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.detector-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.detector-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.detector-header p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.detector-error {
+  background: rgba(255, 77, 77, 0.2);
+  border: 2px solid #ff4d4d;
+  color: #ffb3b3;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.detector-error ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.detector-error li {
+  margin: 4px 0;
+}
+
+.detector-error p {
+  margin: 4px 0;
+}
+
+.detector-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.video-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.video-container video {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.last-frame {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.last-frame img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.detector-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  border: 2px solid white;
+}
+
+.btn-success:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .detector-content {
+    grid-template-columns: 1fr;
+  }
+
+  .cube-detector {
+    padding: 16px;
+  }
+
+  .detector-header h2 {
+    font-size: 24px;
+  }
+}

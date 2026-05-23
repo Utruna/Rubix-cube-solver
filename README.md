@@ -63,11 +63,55 @@ npm run dev
 
 Serveur local: http://localhost:5173
 
+### Detection avancee en mode debug
+
+Le mode `Debug live` peut utiliser un modele vision local via Ollama pour mieux suivre les couleurs ternies et les cas ambigus.
+
+Variables d'environnement utiles:
+
+- `DETECTOR_PROVIDER=auto` ou `classic`
+- `OLLAMA_BASE_URL=http://localhost:11434`
+- `OLLAMA_VISION_MODEL=qwen2.5-vl:7b-instruct` ou un autre modele vision disponible localement
+
+Si Ollama n'est pas disponible, le backend retombe automatiquement sur la detection classique.
+
 ## Build de production
 
 ```bash
 npm run build
 npm run preview
+```
+
+## Docker (mode production)
+
+Le projet est dockerise avec un build multi-stage:
+
+- stage 1: build Vite avec Node.js
+- stage 2: service statique avec Nginx
+
+Prerequis: Docker Desktop (ou Docker Engine) doit etre installe et lance.
+
+### Construire l'image
+
+```bash
+docker build -t rubix-cube-solver .
+```
+
+### Lancer le conteneur
+
+```bash
+docker run --name rubix-cube-solver -p 8080:80 rubix-cube-solver
+```
+
+Application disponible sur:
+
+http://localhost:8080
+
+### Arreter et supprimer le conteneur
+
+```bash
+docker stop rubix-cube-solver
+docker rm rubix-cube-solver
 ```
 
 ## Scripts disponibles

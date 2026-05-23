@@ -1,0 +1,20 @@
+# dependencies
+node_modules
+
+# build outputs
+dist
+coverage
+
+# local/dev files
+.git
+.gitignore
+.vscode
+.idea
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# docs and temporary files
+temp.rm
