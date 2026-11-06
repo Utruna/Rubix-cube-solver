@@ -17,7 +17,7 @@ export interface SolverTables {
  * Table d'élagage par BFS sur le produit de deux coordonnées A x B.
  * `table[a * nB + b]` = nombre minimal de mouvements pour ramener (a, b) à (0, 0).
  */
-function buildPruning(
+export function buildPruning(
   nA: number, nB: number, nMoves: number,
   moveA: ArrayLike<number>, moveB: ArrayLike<number>,
 ): Uint8Array {

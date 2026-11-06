@@ -39,7 +39,7 @@ export class InvalidCubeError extends Error {
 
 // Indices des stickers (ordre U R F D L B, 9 par face, lecture ligne par ligne :
 // c'est exactement la disposition de `CubeState`).
-const CORNER_FACELETS: number[][] = [
+export const CORNER_FACELETS: number[][] = [
   [8, 9, 20], [6, 18, 38], [0, 36, 47], [2, 45, 11],
   [29, 26, 15], [27, 44, 24], [33, 53, 42], [35, 17, 51],
 ]
@@ -115,6 +115,28 @@ export function assertSolvable(c: CubieCube): void {
   }
 }
 
+/** Décode les 8 coins à partir de la couleur de chaque sticker (indices de la disposition 3x3). */
+export function decodeCorners(colorAt: (faceletIndex: number) => Face): Pick<CubieCube, 'cp' | 'co'> {
+  const cp: number[] = []
+  const co: number[] = []
+  const seen = new Set<number>()
+  for (let pos = 0; pos < 8; pos++) {
+    const f = CORNER_FACELETS[pos]
+    let ori = 0
+    while (ori < 3 && colorAt(f[ori]) !== 'U' && colorAt(f[ori]) !== 'D') ori++
+    const piece = ori === 3 ? -1 : CORNER_COLORS.findIndex(
+      col => col[0] === colorAt(f[ori]) && col[1] === colorAt(f[(ori + 1) % 3]) && col[2] === colorAt(f[(ori + 2) % 3]),
+    )
+    if (piece < 0 || seen.has(piece)) {
+      throw new InvalidCubeError('bad-corner', `Invalid corner at position ${pos}.`)
+    }
+    seen.add(piece)
+    cp.push(piece)
+    co.push(ori)
+  }
+  return { cp, co }
+}
+
 /** Décode les 54 stickers en cubies. Lève une `InvalidCubeError` si l'état est incohérent. */
 export function fromFacelets(state: CubeState): CubieCube {
   if (state.length !== 54) throw new InvalidCubeError('bad-length', 'A 3x3 cube needs 54 stickers.')
@@ -123,24 +145,10 @@ export function fromFacelets(state: CubeState): CubieCube {
   }
 
   const cube = identityCube()
-  const seenCorners = new Set<number>()
   const seenEdges = new Set<number>()
-
-  for (let pos = 0; pos < 8; pos++) {
-    const f = CORNER_FACELETS[pos]
-    let ori = 0
-    while (ori < 3 && state[f[ori]] !== 'U' && state[f[ori]] !== 'D') ori++
-    if (ori === 3) throw new InvalidCubeError('bad-corner', `Invalid corner at position ${pos}.`)
-    const c1 = state[f[(ori + 1) % 3]]
-    const c2 = state[f[(ori + 2) % 3]]
-    const piece = CORNER_COLORS.findIndex(col => col[1] === c1 && col[2] === c2 && col[0] === state[f[ori]])
-    if (piece < 0 || seenCorners.has(piece)) {
-      throw new InvalidCubeError('bad-corner', `Invalid corner at position ${pos}.`)
-    }
-    seenCorners.add(piece)
-    cube.cp[pos] = piece
-    cube.co[pos] = ori
-  }
+  const corners = decodeCorners(i => state[i])
+  cube.cp = corners.cp
+  cube.co = corners.co
 
   for (let pos = 0; pos < 12; pos++) {
     const [a, b] = EDGE_FACELETS[pos].map(i => state[i])

@@ -3,11 +3,13 @@ import { isSolved } from '../cube/state'
 import { InvalidCubeError, solve3x3 } from './kociemba'
 import type { Solve3x3Options } from './kociemba'
 import { solveByScrambleInversion } from './scrambleInversion'
+import { solve2x2 } from './twoByTwo'
 
 export type SolveOutcome = { moves: Move[]; error: null } | { moves: null; error: string }
 
 /**
  * Point d'entrée unique du solveur (utilisé par le worker et par les tests).
+ * - 2x2 : optimal (BFS complet), état quelconque.
  * - 3x3 : Kociemba à deux phases (solution quasi optimale, état quelconque).
  * - autres tailles : inversion du mélange connu (pas encore de solveur dédié).
  */
@@ -20,9 +22,9 @@ export function solve(
   if (state.length !== 6 * size * size) return { moves: null, error: 'Invalid cube state length' }
   if (isSolved(state, size)) return { moves: [], error: null }
 
-  if (size === 3) {
+  if (size === 2 || size === 3) {
     try {
-      return { moves: solve3x3(state, options), error: null }
+      return { moves: size === 2 ? solve2x2(state) : solve3x3(state, options), error: null }
     } catch (err) {
       if (err instanceof InvalidCubeError) return { moves: null, error: err.message }
       throw err
