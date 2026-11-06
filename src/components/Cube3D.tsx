@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
@@ -161,8 +161,6 @@ function keyFromCubie(cubie: CubieInfo) {
 // ---- Rendu d'un cubie : corps en plastique noir + autocollants arrondis légèrement en relief ----
 
 const BODY_COLOR = '#0c0c0e'
-const IDLE_SPIN_SPEED = 0.14 // rad/s
-const IDLE_DELAY_MS = 1800
 const CELEBRATION_MS = 1700
 
 const BODY_MATERIAL = new THREE.MeshPhysicalMaterial({
@@ -339,9 +337,7 @@ function SimpleOrbitControls() {
     let dragging = false
     let lastX = 0
     let lastY = 0
-    let lastInteraction = performance.now()
     let frame = 0
-    let lastTick = performance.now()
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const updateCamera = () => {
@@ -357,38 +353,27 @@ function SimpleOrbitControls() {
     updateCamera()
 
     // Rotation lente quand personne n'y touche (la vue reste libre dès qu'on glisse ou qu'on zoome).
-    // Tour complet de la vue quand le cube vient d'être résolu.
-    let celebration: { from: number; start: number } | null = null
+    // Tour complet de la vue quand le cube vient d'être résolu (interrompu dès qu'on saisit le cube).
     const onCelebrate = () => {
-      celebration = { from: state.theta, start: performance.now() }
+      if (reduceMotion) return
+      cancelAnimationFrame(frame)
+      const from = state.theta
+      const start = performance.now()
+      const step = (now: number) => {
+        const t = Math.min(1, (now - start) / CELEBRATION_MS)
+        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+        state.theta = from - eased * Math.PI * 2
+        updateCamera()
+        if (t < 1) frame = requestAnimationFrame(step)
+      }
+      frame = requestAnimationFrame(step)
     }
     window.addEventListener('cube-solved', onCelebrate)
-
-    const idleSpin = (now: number) => {
-      if (celebration) {
-        const t = Math.min(1, (now - celebration.start) / CELEBRATION_MS)
-        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-        state.theta = celebration.from - eased * Math.PI * 2
-        updateCamera()
-        if (t >= 1) celebration = null
-        lastTick = now
-        frame = requestAnimationFrame(idleSpin)
-        return
-      }
-      const dt = Math.min(0.05, (now - lastTick) / 1000)
-      lastTick = now
-      if (!reduceMotion && !dragging && now - lastInteraction > IDLE_DELAY_MS) {
-        state.theta += IDLE_SPIN_SPEED * dt
-        updateCamera()
-      }
-      frame = requestAnimationFrame(idleSpin)
-    }
-    frame = requestAnimationFrame(idleSpin)
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return
       dragging = true
-      lastInteraction = performance.now()
+      cancelAnimationFrame(frame)
       lastX = event.clientX
       lastY = event.clientY
       dom.setPointerCapture(event.pointerId)
@@ -400,7 +385,6 @@ function SimpleOrbitControls() {
       const dy = event.clientY - lastY
       lastX = event.clientX
       lastY = event.clientY
-      lastInteraction = performance.now()
 
       state.theta -= dx * 0.01
       state.phi = clamp(state.phi + dy * 0.01, MIN_POLAR, MAX_POLAR)
@@ -416,7 +400,6 @@ function SimpleOrbitControls() {
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
-      lastInteraction = performance.now()
       state.radius = clamp(state.radius + event.deltaY * 0.005, MIN_RADIUS, MAX_RADIUS)
       updateCamera()
     }
@@ -472,16 +455,25 @@ function CubeScene({ state, size }: Props) {
 
   const cubies = useMemo(() => makeCubies(size), [size])
 
+  // Vrai entre le moment où l'animation « logique » change et celui où React a redistribué les cubies
+  // (couches fixes / tournantes) et leurs couleurs : on ne touche pas à la rotation pendant ce temps.
+  const awaitingCommitRef = useRef(false)
+
   const startAnimation = (anim: ActiveAnimation) => {
     activeAnimRef.current = anim
+    awaitingCommitRef.current = true
     setActiveAnim(anim)
     setDisplayState(anim.fromState)
+  }
+
+  // Une fois le nouvel état affiché ET les couches redistribuées, on remet la couche à zéro et on
+  // démarre le chronomètre : avant l'affichage, donc sans image intermédiaire (plus de clignotement).
+  useLayoutEffect(() => {
+    if (rotatingGroupRef.current) rotatingGroupRef.current.rotation.set(0, 0, 0)
     elapsedMsRef.current = 0
     accumulatorMsRef.current = 0
-    if (rotatingGroupRef.current) {
-      setAxisRotation(rotatingGroupRef.current, anim.axis, 0)
-    }
-  }
+    awaitingCommitRef.current = false
+  }, [activeAnim])
 
   useEffect(() => {
     const prevState = prevStateRef.current
@@ -533,7 +525,7 @@ function CubeScene({ state, size }: Props) {
   useFrame((_, delta) => {
     const anim = activeAnimRef.current
     const rotatingGroup = rotatingGroupRef.current
-    if (!anim || !rotatingGroup) return
+    if (!anim || !rotatingGroup || awaitingCommitRef.current) return
 
     accumulatorMsRef.current += delta * 1000
     let steps = 0
@@ -548,15 +540,14 @@ function CubeScene({ state, size }: Props) {
     setAxisRotation(rotatingGroup, anim.axis, anim.targetAngle * eased)
 
     if (progress >= 1) {
+      // La couche reste à son angle final (identique, à l'œil, au nouvel état) jusqu'à ce que React
+      // ait affiché le nouvel état ; le useLayoutEffect ci-dessus la remet ensuite à zéro.
+      setAxisRotation(rotatingGroup, anim.axis, anim.targetAngle)
+      awaitingCommitRef.current = true
       setDisplayState(anim.toState)
       const next = animQueueRef.current.shift()
-      if (next) {
-        startAnimation(next)
-      } else {
-        setAxisRotation(rotatingGroup, anim.axis, 0)
-        activeAnimRef.current = null
-        setActiveAnim(null)
-      }
+      activeAnimRef.current = next ?? null
+      setActiveAnim(next ?? null)
     }
   })
 
