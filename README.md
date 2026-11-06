@@ -114,6 +114,14 @@ docker run --name rubix-cube-solver-backend -e DETECTOR_PROVIDER=classic -p 5000
 docker run --name rubix-cube-solver-backend -e DETECTOR_PROVIDER=auto -e OLLAMA_BASE_URL=http://host.docker.internal:11434 -e OLLAMA_VISION_MODEL=qwen2.5vl:7b -e OLLAMA_TIMEOUT_SECONDS=10 -p 5000:5000 rubix-cube-solver-backend
 ```
 
+## Version autonome (demo)
+
+```bash
+npm run build:standalone
+```
+
+Produit `dist-standalone/index.html` : un unique fichier qui s'ouvre directement dans un navigateur (meme en `file://`), sans serveur ni backend. La detection par camera y est desactivee ; les solvers tournent entierement dans le navigateur.
+
 ## Build de production
 
 ```bash
