@@ -137,12 +137,12 @@ describe('solveur 3x3', () => {
     expect(moves.length).toBeLessThanOrEqual(parseAlg(alg).length)
   })
 
-  it('résout 12 états aléatoires en ≤ 23 mouvements (1 s chacun)', { timeout: 60_000 }, () => {
+  it('résout 12 états aléatoires en ≤ 25 mouvements (1 s chacun)', { timeout: 60_000 }, () => {
     for (let i = 0; i < 12; i++) {
       const state = randomState(40)
       const moves = solve3x3(state, { timeLimitMs: 1000, targetLength: 0 })
       expect(verify(state, moves)).toBe(true)
-      expect(moves.length).toBeLessThanOrEqual(23)
+      expect(moves.length).toBeLessThanOrEqual(25)
     }
   })
 

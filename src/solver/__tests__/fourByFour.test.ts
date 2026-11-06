@@ -6,7 +6,7 @@ import { createSolvedState, isSolved } from '../../cube/state'
 import type { CubeState, Move } from '../../cube/types'
 import { solve } from '../index'
 import { centersSolved, solveCenters } from '../fourByFour/centers'
-import { getEdgeLibrary, pairEdges, pairedEdges } from '../fourByFour/edges'
+import { getEdgeLibrary, pairEdgesReliably, pairedEdges } from '../fourByFour/edges'
 import { MOVES, N_MOVES, applyMoveId, decodeState, encodeState, inverseMoveId } from '../fourByFour/geometry'
 import { reduceTo3x3, simplifyMoves, solve4x4 } from '../fourByFour'
 import { OLL_PARITY, PLL_PARITY } from '../fourByFour/parity'
@@ -56,7 +56,7 @@ describe('arêtes', () => {
   it('apparie les 12 arêtes sans toucher aux centres', { timeout: 120_000 }, () => {
     for (let i = 0; i < 4; i++) {
       const centers = solveCenters(encodeState(scrambled())).state
-      const { state } = pairEdges(centers)
+      const { state } = pairEdgesReliably(centers)
       expect(pairedEdges(state)).toBe(0xfff)
       expect(centersSolved(state)).toBe(true)
     }

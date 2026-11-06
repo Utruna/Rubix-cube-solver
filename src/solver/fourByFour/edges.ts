@@ -243,3 +243,26 @@ export function pairEdges(
   }
   return { state, moves: played }
 }
+
+const MAX_PAIRING_ATTEMPTS = 8
+
+/**
+ * Apparie les arêtes de façon fiable : si une tentative s'enlise (trop de corrections de parité),
+ * on tourne quelques faces (les centres restent résolus) et on repart d'une autre configuration.
+ */
+export function pairEdgesReliably(initial: Uint8Array): { state: Uint8Array; moves: number[] } {
+  let state = initial
+  const prefix: number[] = []
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const paired = pairEdges(state)
+      return { state: paired.state, moves: [...prefix, ...paired.moves] }
+    } catch (err) {
+      if (!(err instanceof PairingGaveUp) || attempt >= MAX_PAIRING_ATTEMPTS) throw err
+      // Deux mouvements de faces extérieures, différents à chaque tentative.
+      const shuffle = [(attempt * 5 + 1) % 18, 3 * ((attempt + 2) % 6) + ((attempt + 1) % 3)]
+      for (const id of shuffle) state = applyPerm(state, MOVES[id].perm)
+      prefix.push(...shuffle)
+    }
+  }
+}
