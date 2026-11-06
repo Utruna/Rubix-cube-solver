@@ -56,6 +56,8 @@ export default function App() {
     solverStatus,
     solverError,
     animStatus,
+    scrambling,
+    scrambleIndex,
     setCubeSize,
     scramble,
     reset,
@@ -70,7 +72,7 @@ export default function App() {
 
   const solved = isSolved(cubeState, cubeSize)
   const hasSolution = solutionMoves.length > 0
-  const busy = solverStatus === 'solving' || animStatus === 'playing'
+  const busy = solverStatus === 'solving' || animStatus === 'playing' || scrambling
 
   // Le temps de calcul n'a plus de sens dès que le cube change ou est réinitialisé.
   useEffect(() => {
@@ -147,6 +149,11 @@ export default function App() {
 
           <span className="grow" />
 
+          {scrambling && (
+            <span className="status">
+              <span className="spinner" aria-hidden /> {t('scrambling')}
+            </span>
+          )}
           {solverStatus === 'solving' && (
             <span className="status">
               <span className="spinner" aria-hidden /> {t('solving')}
@@ -157,7 +164,7 @@ export default function App() {
               <span className="dot" aria-hidden /> {t('error')}: {solverError}
             </span>
           )}
-          {solverStatus !== 'solving' && solverStatus !== 'error' && solved && (
+          {!scrambling && solverStatus !== 'solving' && solverStatus !== 'error' && solved && (
             <span className="status ok">
               <span className="dot" aria-hidden /> {t('solved')}
             </span>
@@ -170,7 +177,7 @@ export default function App() {
             <h4>
               {t('scrambleLabel')} <small>{t('scrambleMoves', { count: parseAlg(scrambleAlg).length })}</small>
             </h4>
-            <MoveChips moves={parseAlg(scrambleAlg).map(formatMove)} />
+            <MoveChips moves={parseAlg(scrambleAlg).map(formatMove)} current={scrambling ? scrambleIndex - 1 : undefined} />
           </div>
         )}
 

@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyAlg, applyMove } from '../moves'
 import { formatAlg, parseAlg } from '../notation'
-import { generateScrambleForSize } from '../scramble'
+import { defaultScrambleLength, generateScrambleForSize, playScramble, scrambleMoveDuration } from '../scramble'
 import { createSolvedState, faceOffset, isSolved, validateStateBasic } from '../state'
 import type { CubeSize, Face, Move } from '../types'
 import { FACE_ORDER } from '../types'
@@ -107,5 +107,64 @@ describe('scramble', () => {
     for (let i = 1; i < moves.length; i++) {
       expect(moves[i].face).not.toBe(moves[i - 1].face)
     }
+  })
+})
+
+describe('mélange animé', () => {
+  it('durée par coup bornée, plus courte pour les longs mélanges', () => {
+    expect(scrambleMoveDuration(11)).toBe(90)
+    expect(scrambleMoveDuration(25)).toBe(80)
+    expect(scrambleMoveDuration(60)).toBeLessThan(scrambleMoveDuration(25))
+    expect(scrambleMoveDuration(500)).toBe(40)
+    expect(scrambleMoveDuration(0)).toBe(90)
+  })
+
+  it.each(SIZES)('un mélange complet dure environ 2 s au plus (%ix%i)', size => {
+    const count = defaultScrambleLength(size)
+    expect(count * scrambleMoveDuration(count)).toBeLessThanOrEqual(2600)
+  })
+})
+
+describe('pilote du mélange animé', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  const run = (count: number) => {
+    const moves = generateScrambleForSize(3, count)
+    const played: { index: number; at: number; durationMs: number }[] = []
+    let doneAt = -1
+    const start = Date.now()
+    const cancel = playScramble(moves, {
+      step: (_m, durationMs, index) => played.push({ index, at: Date.now() - start, durationMs }),
+      done: () => { doneAt = Date.now() - start },
+    })
+    return { moves, played, cancel, doneAt: () => doneAt }
+  }
+
+  it('joue tous les coups dans l’ordre, espacés d’au moins leur durée d’animation', () => {
+    const { moves, played, doneAt } = run(25)
+    vi.advanceTimersByTime(10_000)
+    expect(played.map(p => p.index)).toEqual(moves.map((_, i) => i))
+    for (let i = 1; i < played.length; i++) {
+      expect(played[i].at - played[i - 1].at).toBeGreaterThanOrEqual(played[i].durationMs)
+    }
+    expect(doneAt()).toBeGreaterThan(played[played.length - 1].at)
+  })
+
+  it('un mélange de 25 coups se joue en moins de 2,7 s', () => {
+    const { doneAt } = run(25)
+    vi.advanceTimersByTime(2700)
+    expect(doneAt()).toBeGreaterThan(0)
+  })
+
+  it('s’interrompt immédiatement (Reset, changement de taille)', () => {
+    const { played, cancel, doneAt } = run(25)
+    vi.advanceTimersByTime(500)
+    const before = played.length
+    expect(before).toBeGreaterThan(0)
+    cancel()
+    vi.advanceTimersByTime(10_000)
+    expect(played.length).toBe(before)
+    expect(doneAt()).toBe(-1)
   })
 })

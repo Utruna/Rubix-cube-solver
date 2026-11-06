@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useCallback, useContext, useMemo, useReducer } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react'
 import type { CubeSize, CubeState, Move } from '../cube/types'
 import { createSolvedState } from '../cube/state'
-import { applyAlg, applyMove } from '../cube/moves'
-import { defaultScrambleLength, generateScrambleForSize } from '../cube/scramble'
+import { applyMove } from '../cube/moves'
+import { defaultScrambleLength, generateScrambleForSize, playScramble } from '../cube/scramble'
 import { formatAlg } from '../cube/notation'
 
 export type SolverStatus = 'idle' | 'solving' | 'solved' | 'error'
@@ -15,7 +15,11 @@ interface CubeStoreState {
   scrambleAlg: string
   solutionMoves: Move[]
   currentMoveIndex: number
-  lastAppliedMove: { move: Move; sequence: number } | null
+  /** `durationMs` : durée imposée à l'animation (mélange rapide) ; sinon celle de la vitesse de lecture. */
+  lastAppliedMove: { move: Move; sequence: number; durationMs?: number } | null
+  /** Vrai pendant que le mélange se joue coup par coup ; `scrambleIndex` = coups déjà joués. */
+  scrambling: boolean
+  scrambleIndex: number
   solverStatus: SolverStatus
   solverError: string | null
   animStatus: AnimationStatus
@@ -42,7 +46,9 @@ export type CubeStore = CubeStoreState & CubeStoreActions
 type Action =
   | { type: 'setCubeSize'; payload: CubeSize }
   | { type: 'reset' }
-  | { type: 'scramble'; payload: { state: CubeState; scrambleAlg: string } }
+  | { type: 'beginScramble'; payload: { scrambleAlg: string } }
+  | { type: 'scrambleStep'; payload: { move: Move; durationMs: number } }
+  | { type: 'endScramble' }
   | { type: 'setCubeState'; payload: CubeState }
   | { type: 'setSolution'; payload: Move[] }
   | { type: 'setSolverStatus'; payload: { status: SolverStatus; error: string | null } }
@@ -60,6 +66,8 @@ const initialState: CubeStoreState = {
   solutionMoves: [],
   currentMoveIndex: 0,
   lastAppliedMove: null,
+  scrambling: false,
+  scrambleIndex: 0,
   solverStatus: 'idle',
   solverError: null,
   animStatus: 'idle',
@@ -84,6 +92,8 @@ function reducer(state: CubeStoreState, action: Action): CubeStoreState {
         solutionMoves: [],
         currentMoveIndex: 0,
         lastAppliedMove: null,
+        scrambling: false,
+        scrambleIndex: 0,
         solverStatus: 'idle',
         solverError: null,
         animStatus: 'idle',
@@ -97,18 +107,34 @@ function reducer(state: CubeStoreState, action: Action): CubeStoreState {
         animSpeed: state.animSpeed,
       }
 
-    case 'scramble':
+    case 'beginScramble':
       return {
         ...state,
-        cubeState: action.payload.state,
+        cubeState: createSolvedState(state.cubeSize),
         scrambleAlg: action.payload.scrambleAlg,
         solutionMoves: [],
         currentMoveIndex: 0,
         lastAppliedMove: null,
+        scrambling: true,
+        scrambleIndex: 0,
         solverStatus: 'idle',
         solverError: null,
         animStatus: 'idle',
       }
+
+    case 'scrambleStep': {
+      moveSequence += 1
+      const { move, durationMs } = action.payload
+      return {
+        ...state,
+        cubeState: applyMove(state.cubeState, move, state.cubeSize),
+        lastAppliedMove: { move, sequence: moveSequence, durationMs },
+        scrambleIndex: state.scrambleIndex + 1,
+      }
+    }
+
+    case 'endScramble':
+      return { ...state, scrambling: false }
 
     case 'setCubeState':
       return {
@@ -180,23 +206,35 @@ const CubeStoreContext = createContext<CubeStore | null>(null)
 
 export function CubeStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState)
+  const cancelScramble = useRef<(() => void) | null>(null)
+
+  const stopScramble = useCallback(() => {
+    cancelScramble.current?.()
+    cancelScramble.current = null
+  }, [])
+  useEffect(() => stopScramble, [stopScramble])
 
   const setCubeSize = useCallback((size: CubeSize) => {
+    stopScramble()
     dispatch({ type: 'setCubeSize', payload: size })
-  }, [])
+  }, [stopScramble])
 
-  const reset = useCallback(() => dispatch({ type: 'reset' }), [])
+  const reset = useCallback(() => {
+    stopScramble()
+    dispatch({ type: 'reset' })
+  }, [stopScramble])
 
+  // Le mélange se joue coup par coup, vite (voir playScramble).
   const scramble = useCallback(() => {
+    stopScramble()
     const moves = generateScrambleForSize(state.cubeSize, defaultScrambleLength(state.cubeSize))
-    dispatch({
-      type: 'scramble',
-      payload: {
-        state: applyAlg(createSolvedState(state.cubeSize), moves, state.cubeSize),
-        scrambleAlg: formatAlg(moves),
-      },
+    dispatch({ type: 'beginScramble', payload: { scrambleAlg: formatAlg(moves) } })
+    // Court délai de départ (par défaut) : le cube remis à neuf doit s'afficher avant le premier coup.
+    cancelScramble.current = playScramble(moves, {
+      step: (move, durationMs) => dispatch({ type: 'scrambleStep', payload: { move, durationMs } }),
+      done: () => dispatch({ type: 'endScramble' }),
     })
-  }, [state.cubeSize])
+  }, [state.cubeSize, stopScramble])
 
   const setCubeState = useCallback((cubeState: CubeState) => {
     dispatch({ type: 'setCubeState', payload: cubeState })

@@ -41,3 +41,49 @@ export function defaultScrambleLength(size: CubeSize): number {
   if (size === 4) return 40
   return 60
 }
+
+/** Durée totale visée pour un mélange animé (ms) : vif, quelle que soit la taille du cube. */
+const SCRAMBLE_TARGET_MS = 2000
+const SCRAMBLE_MOVE_MIN_MS = 40
+const SCRAMBLE_MOVE_MAX_MS = 90
+
+/** Durée de l'animation d'un coup quand on joue un mélange de `moveCount` coups. */
+export function scrambleMoveDuration(moveCount: number): number {
+  const perMove = SCRAMBLE_TARGET_MS / Math.max(1, moveCount)
+  return Math.round(Math.min(SCRAMBLE_MOVE_MAX_MS, Math.max(SCRAMBLE_MOVE_MIN_MS, perMove)))
+}
+
+export interface ScrambleHandlers {
+  /** Joue le coup `index` (0-based) ; `durationMs` est la durée d'animation à lui donner. */
+  step: (move: Move, durationMs: number, index: number) => void
+  /** Appelé une fois le dernier coup terminé. */
+  done: () => void
+}
+
+/**
+ * Joue un mélange coup par coup : un coup toutes les `durationMs` (+ un léger battement), le temps que
+ * le cube termine son animation avant la suivante. Renvoie une fonction qui interrompt le mélange.
+ */
+export function playScramble(
+  moves: Move[],
+  handlers: ScrambleHandlers,
+  startDelayMs = 80,
+): () => void {
+  const durationMs = scrambleMoveDuration(moves.length)
+  let timer: ReturnType<typeof setTimeout> | null = null
+  let index = 0
+
+  const tick = () => {
+    handlers.step(moves[index], durationMs, index)
+    index += 1
+    timer = index < moves.length
+      ? setTimeout(tick, durationMs + 12)
+      : setTimeout(handlers.done, durationMs + 60)
+  }
+  timer = setTimeout(tick, startDelayMs)
+
+  return () => {
+    if (timer) clearTimeout(timer)
+    timer = null
+  }
+}

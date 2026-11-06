@@ -16,6 +16,10 @@ interface Props {
 
 const CAMERA_POSITION: [number, number, number] = [5.9, 5.2, 5.9]
 const CAMERA_FOV = 36
+// Plan proche/lointain resserrés : les téléphones ont souvent un tampon de profondeur 16 bits, et avec
+// near = 0.1 les autocollants (à ~0.01 du plastique) scintillaient (z-fighting).
+const CAMERA_NEAR = 3
+const CAMERA_FAR = 60
 const MIN_POLAR = 0.25
 const MAX_POLAR = Math.PI - 0.25
 const MIN_RADIUS = 6
@@ -243,11 +247,15 @@ function Cubie({ cubie, state, size }: { cubie: CubieInfo; state: CubeState; siz
       {FACE_DIRS.map(dir => {
         const idx = getStickerIndex(cubie.ix, cubie.iy, cubie.iz, dir, size)
         if (idx === null) return null
+        // Au changement de taille, l'état affiché garde l'ancienne taille le temps d'une image :
+        // la couleur est alors introuvable, on saute l'autocollant plutôt que de faire planter le rendu.
+        const material = STICKER_MATERIALS[state[idx] as Face]
+        if (!material) return null
         return (
           <mesh
             key={dir.face}
             geometry={sticker}
-            material={STICKER_MATERIALS[state[idx] as Face]}
+            material={material}
             position={[dir.normal[0] * half, dir.normal[1] * half, dir.normal[2] * half]}
             rotation={STICKER_ROTATION[dir.face]}
           />
@@ -293,6 +301,20 @@ function CameraLight() {
     light.current.position.x -= 1.5
   })
   return <directionalLight ref={light} intensity={0.85} />
+}
+
+/**
+ * En portrait (téléphone), le champ de vision est limité par la largeur : on dézoome pour que le cube
+ * ne touche pas les bords, même quand il tourne.
+ */
+function AspectFit() {
+  const { camera, size } = useThree()
+  useEffect(() => {
+    const aspect = size.width / Math.max(1, size.height)
+    camera.zoom = clamp(aspect / 0.95, 0.6, 1)
+    camera.updateProjectionMatrix()
+  }, [camera, size.width, size.height])
+  return null
 }
 
 /** Reflets réalistes : une petite pièce éclairée sert d'environnement aux plastiques vernis. */
@@ -429,7 +451,7 @@ export function Cube3D({ state, size }: Props) {
     <Canvas
       flat
       dpr={[1, 2]}
-      camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}
+      camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV, near: CAMERA_NEAR, far: CAMERA_FAR }}
       gl={{ antialias: true, alpha: true }}
       style={{ width: '100%', height: '100%', background: 'transparent' }}
     >
@@ -441,6 +463,7 @@ export function Cube3D({ state, size }: Props) {
 function CubeScene({ state, size }: Props) {
   const animSpeed = useCubeStore(s => s.animSpeed)
   const lastAppliedMove = useCubeStore(s => s.lastAppliedMove)
+  const scrambling = useCubeStore(s => s.scrambling)
 
   const [displayState, setDisplayState] = useState<CubeState>(state)
   const [activeAnim, setActiveAnim] = useState<ActiveAnimation | null>(null)
@@ -486,7 +509,7 @@ function CubeScene({ state, size }: Props) {
       const signed = moveToSigned(lastAppliedMove.move)
       const width = Math.max(1, Math.min(lastAppliedMove.move.width ?? 1, Math.floor(size / 2)))
       // Un peu plus court que l'intervalle de lecture (1 s / vitesse) : les coups s'enchaînent sans à-coup.
-      const durationMs = Math.min(700, Math.max(120, 780 / Math.max(animSpeed, 0.1)))
+      const durationMs = lastAppliedMove.durationMs ?? Math.min(700, Math.max(120, 780 / Math.max(animSpeed, 0.1)))
       const anim: ActiveAnimation = {
         axis: signed.axis,
         layer: signed.layer,
@@ -516,11 +539,11 @@ function CubeScene({ state, size }: Props) {
   const wasSolvedRef = useRef(isSolved(state, size))
   useEffect(() => {
     const nowSolved = isSolved(displayState, size)
-    if (nowSolved && !wasSolvedRef.current && processedMoveRef.current > 0 && !activeAnimRef.current) {
+    if (nowSolved && !wasSolvedRef.current && !scrambling && processedMoveRef.current > 0 && !activeAnimRef.current) {
       window.dispatchEvent(new Event('cube-solved'))
     }
     wasSolvedRef.current = nowSolved
-  }, [displayState, size])
+  }, [displayState, size, scrambling])
 
   useFrame((_, delta) => {
     const anim = activeAnimRef.current
@@ -559,6 +582,7 @@ function CubeScene({ state, size }: Props) {
   return (
     <>
       <StudioEnvironment />
+      <AspectFit />
       <hemisphereLight args={['#ffffff', '#44444c', 0.5]} />
       <directionalLight position={[3, 8, 2]} intensity={0.3} />
       <CameraLight />
