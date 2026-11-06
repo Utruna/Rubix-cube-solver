@@ -448,6 +448,7 @@ function SimpleOrbitControls() {
 
 export function Cube3D({ state, size }: Props) {
   return (
+    <div className="canvas-fill">
     <Canvas
       flat
       dpr={[1, 2]}
@@ -457,6 +458,7 @@ export function Cube3D({ state, size }: Props) {
     >
       <CubeScene state={state} size={size} />
     </Canvas>
+    </div>
   )
 }
 

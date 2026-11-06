@@ -24,7 +24,9 @@ function MoveChips({ moves, current }: { moves: string[]; current?: number }) {
     const box = ref.current
     const chip = current === undefined ? undefined : box?.children[Math.min(current, moves.length - 1)]
     if (box && chip instanceof HTMLElement) {
-      box.scrollTop = chip.offsetTop - box.clientHeight / 2 + chip.clientHeight / 2
+      // Position du coup dans la liste (indépendante des éléments positionnés autour).
+      const top = chip.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop
+      box.scrollTop = top - box.clientHeight / 2 + chip.clientHeight / 2
     }
   }, [current, moves.length])
 
@@ -172,27 +174,36 @@ export default function App() {
           {solverStatus === 'solving' && cubeSize >= 3 && <span className="hint">{t('solvingHint')}</span>}
         </div>
 
-        {scrambleAlg && (
-          <div className="card moves-card">
-            <h4>
-              {t('scrambleLabel')} <small>{t('scrambleMoves', { count: parseAlg(scrambleAlg).length })}</small>
-            </h4>
+        <div className="moves-col">
+        <div className={`card moves-card${scrambleAlg ? '' : ' empty'}`}>
+          <h4>
+            {t('scrambleLabel')}
+            {scrambleAlg && <small>{t('scrambleMoves', { count: parseAlg(scrambleAlg).length })}</small>}
+          </h4>
+          {scrambleAlg ? (
             <MoveChips moves={parseAlg(scrambleAlg).map(formatMove)} current={scrambling ? scrambleIndex - 1 : undefined} />
-          </div>
-        )}
+          ) : (
+            <p className="placeholder">{t('noScramble')}</p>
+          )}
+        </div>
 
-        {hasSolution && (
-          <div className="card moves-card">
-            <h4>
-              {t('solutionLabel')}{' '}
+        <div className={`card moves-card${hasSolution ? '' : ' empty'}`}>
+          <h4>
+            {t('solutionLabel')}
+            {hasSolution && (
               <small>
                 {t('movesCount', { count: solutionMoves.length })}
                 {solveSeconds !== null && ` · ${t('solvedIn', { seconds: solveSeconds.toFixed(1) })}`}
               </small>
-            </h4>
+            )}
+          </h4>
+          {hasSolution ? (
             <MoveChips moves={solutionMoves.map(formatMove)} current={currentMoveIndex} />
-          </div>
-        )}
+          ) : (
+            <p className="placeholder">{t('noSolution')}</p>
+          )}
+        </div>
+        </div>
 
         <div className={`stage${activeView === '2d' || !isCubeView ? ' plain' : ''}`}>
           <div className="seg" role="tablist">

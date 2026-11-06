@@ -28,8 +28,8 @@ export function CubeNet({ state, size }: Props) {
   const totalH = 3 * (faceSize + padding) + padding + 8
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <svg width={totalW} height={totalH} style={{ display: 'block', margin: '0 auto' }}>
+    <div className="net-wrap">
+      <svg className="net" viewBox={`0 0 ${totalW} ${totalH}`} preserveAspectRatio="xMidYMid meet">
         {positions.map(({ face, row, col }) => {
           const x = padding + col * (faceSize + padding)
           const y = padding + 6 + row * (faceSize + padding)
