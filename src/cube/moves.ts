@@ -10,8 +10,8 @@ type Rotation = { axis: Axis; layer: Layer; rotate: (v: Vec3) => Vec3 }
 const FACE_ORDER: Face[] = ['U', 'R', 'F', 'D', 'L', 'B']
 
 const MOVE_ROTATIONS: Record<Face, Rotation> = {
-  U: { axis: 'y', layer: 'max', rotate: (v) => ({ x: v.z, y: v.y, z: -v.x }) },
-  D: { axis: 'y', layer: 'min', rotate: (v) => ({ x: -v.z, y: v.y, z: v.x }) },
+  U: { axis: 'y', layer: 'max', rotate: (v) => ({ x: -v.z, y: v.y, z: v.x }) },
+  D: { axis: 'y', layer: 'min', rotate: (v) => ({ x: v.z, y: v.y, z: -v.x }) },
   R: { axis: 'x', layer: 'max', rotate: (v) => ({ x: v.x, y: v.z, z: -v.y }) },
   L: { axis: 'x', layer: 'min', rotate: (v) => ({ x: v.x, y: -v.z, z: v.y }) },
   F: { axis: 'z', layer: 'max', rotate: (v) => ({ x: v.y, y: -v.x, z: v.z }) },
@@ -150,6 +150,15 @@ function applyPermutation(state: CubeState, perm: number[]): CubeState {
     next[i] = state[perm[i]]
   }
   return next as CubeState
+}
+
+/**
+ * Rotation du cube entier autour de l'axe diagonal (x → y → z → x) : `map[i]` est le nouvel
+ * indice du sticker `i`. Les faces suivent (R → U → F → R, L → D → B → L).
+ */
+export function axisCycleIndexMap(size: CubeSize = 3): number[] {
+  const cycle = (v: Vec3): Vec3 => ({ x: v.z, y: v.x, z: v.y })
+  return buildBaseStickers(size).map(s => stickerToIndex({ pos: cycle(s.pos), normal: cycle(s.normal) }, size))
 }
 
 export function applyMove(state: CubeState, move: Move, size: CubeSize = 3): CubeState {
