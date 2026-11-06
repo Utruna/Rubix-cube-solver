@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from './i18n'
 import { useCubeStore } from './store/cubeStore'
 import { useSolver } from './solver/useSolver'
@@ -8,23 +8,42 @@ import { AnimationControls } from './components/AnimationControls.tsx'
 import { CubeDetector } from './components/CubeDetector.tsx'
 import { DebugDetector } from './components/DebugDetector.tsx'
 import { isSolved } from './cube/state'
-import { formatAlg } from './cube/notation'
-import type { CubeState } from './cube/types'
+import { formatMove, parseAlg } from './cube/notation'
+import type { CubeSize, CubeState } from './cube/types'
+import './styles/app.css'
 
-function LanguageToggle() {
-  const { t, language, changeLanguage } = useTranslation()
+const SIZES: CubeSize[] = [2, 3, 4, 5]
+
+type View = '3d' | '2d' | 'detector' | 'debug'
+
+function MoveChips({ moves, current }: { moves: string[]; current?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Garde le coup en cours au centre de la liste sans faire défiler la page.
+  useEffect(() => {
+    const box = ref.current
+    const chip = current === undefined ? undefined : box?.children[Math.min(current, moves.length - 1)]
+    if (box && chip instanceof HTMLElement) {
+      box.scrollTop = chip.offsetTop - box.clientHeight / 2 + chip.clientHeight / 2
+    }
+  }, [current, moves.length])
+
   return (
-    <button
-      onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')}
-      style={{ marginLeft: 'auto' }}
-    >
-      {t('language')}
-    </button>
+    <div className="chips" ref={ref}>
+      {moves.map((move, i) => (
+        <span
+          key={i}
+          className={`chip${current === undefined ? '' : i < current ? ' done' : i === current ? ' current' : ''}`}
+        >
+          {move}
+        </span>
+      ))}
+    </div>
   )
 }
 
 export default function App() {
-  const { t } = useTranslation()
+  const { t, language, changeLanguage } = useTranslation()
   const hasVision = !import.meta.env.VITE_STANDALONE
   const isDevMode =
     hasVision && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -33,6 +52,7 @@ export default function App() {
     cubeState,
     scrambleAlg,
     solutionMoves,
+    currentMoveIndex,
     solverStatus,
     solverError,
     animStatus,
@@ -45,20 +65,27 @@ export default function App() {
   } = useCubeStore()
 
   const { solve } = useSolver()
-  const [activeView, setActiveView] = useState<'3d' | '2d' | 'detector' | 'debug'>(
-    isDevMode ? 'debug' : '3d',
-  )
+  const [activeView, setActiveView] = useState<View>(isDevMode ? 'debug' : '3d')
+  const [solveSeconds, setSolveSeconds] = useState<number | null>(null)
 
   const solved = isSolved(cubeState, cubeSize)
   const hasSolution = solutionMoves.length > 0
+  const busy = solverStatus === 'solving' || animStatus === 'playing'
+
+  // Le temps de calcul n'a plus de sens dès que le cube change ou est réinitialisé.
+  useEffect(() => {
+    if (!hasSolution) setSolveSeconds(null)
+  }, [hasSolution])
 
   const handleSolve = async () => {
     if (solved) return
     setSolverStatus('solving')
+    const startedAt = performance.now()
     const result = await solve(cubeState, cubeSize, scrambleAlg)
     if (result.error) {
       setSolverStatus('error', result.error)
     } else {
+      setSolveSeconds((performance.now() - startedAt) / 1000)
       setSolution(result.moves)
       setSolverStatus('solved')
     }
@@ -69,141 +96,124 @@ export default function App() {
     setActiveView('3d')
   }
 
+  const views: { id: View; label: string }[] = [
+    { id: '3d', label: t('view3d') },
+    { id: '2d', label: t('view2d') },
+    ...(hasVision ? [{ id: 'detector' as View, label: 'Detector' }] : []),
+    ...(isDevMode ? [{ id: 'debug' as View, label: 'Debug' }] : []),
+  ]
+  const isCubeView = activeView === '3d' || activeView === '2d'
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{
-        padding: '12px 24px',
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-      }}>
-        <h1 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent)' }}>
-          🎲 {t('title')}
-        </h1>
-        <LanguageToggle />
+    <>
+      <header className="topbar">
+        <span className="brand">{t('title')}</span>
+        <span className="spacer" />
+        <button className="lang" onClick={() => changeLanguage(language === 'en' ? 'fr' : 'en')}>
+          {t('language')}
+        </button>
       </header>
 
-      <main style={{ flex: 1, padding: 24, maxWidth: 960, margin: '0 auto', width: '100%' }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>{t('cubeSize')}</span>
-            <select
-              value={cubeSize}
-              onChange={(e) => setCubeSize(Number(e.target.value) as 2 | 3 | 4 | 5)}
-              disabled={solverStatus === 'solving' || animStatus === 'playing'}
-            >
-              <option value={2}>2x2</option>
-              <option value={3}>3x3</option>
-              <option value={4}>4x4</option>
-              <option value={5}>5x5</option>
-            </select>
-          </label>
-          <button onClick={scramble}>{t('scramble')}</button>
-          <button
-            onClick={handleSolve}
-            disabled={solved || solverStatus === 'solving'}
-            style={{ background: solved ? '#2d5a2d' : undefined }}
-          >
+      <main className="page">
+        <section className="hero">
+          <h1>{t('title')}</h1>
+          <p>{t('subtitle')}</p>
+        </section>
+
+        <div className="card toolbar">
+          <div className="seg" role="group" aria-label={t('cubeSize')}>
+            {SIZES.map(size => (
+              <button
+                key={size}
+                className={size === cubeSize ? 'on' : ''}
+                onClick={() => setCubeSize(size)}
+                disabled={busy}
+                aria-pressed={size === cubeSize}
+              >
+                {t(`size${size}`)}
+              </button>
+            ))}
+          </div>
+
+          <button onClick={scramble} disabled={busy}>
+            {t('scramble')}
+          </button>
+          <button className="btn-primary" onClick={handleSolve} disabled={solved || busy}>
             {solverStatus === 'solving' ? t('solving') : t('solve')}
           </button>
-          <button onClick={reset}>{t('reset')}</button>
-          {solved && (
-            <span style={{ color: '#4caf50', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
-              ✅ {t('solved')}
+          <button onClick={reset} disabled={solverStatus === 'solving'}>
+            {t('reset')}
+          </button>
+
+          <span className="grow" />
+
+          {solverStatus === 'solving' && (
+            <span className="status">
+              <span className="spinner" aria-hidden /> {t('solving')}
             </span>
           )}
-          {solverStatus === 'error' && (
-            <span style={{ color: '#f44336', fontSize: '0.85rem' }}>
-              ❌ {t('error')}: {solverError}
+          {solverStatus !== 'solving' && solverStatus === 'error' && (
+            <span className="status bad">
+              <span className="dot" aria-hidden /> {t('error')}: {solverError}
             </span>
           )}
+          {solverStatus !== 'solving' && solverStatus !== 'error' && solved && (
+            <span className="status ok">
+              <span className="dot" aria-hidden /> {t('solved')}
+            </span>
+          )}
+          {solverStatus === 'solving' && cubeSize >= 3 && <span className="hint">{t('solvingHint')}</span>}
         </div>
 
         {scrambleAlg && (
-          <div style={{
-            marginBottom: 12,
-            padding: '8px 12px',
-            background: 'var(--surface)',
-            borderRadius: 6,
-            border: '1px solid var(--border)',
-            fontSize: '0.85rem',
-          }}>
-            <span style={{ color: 'var(--text-muted)' }}>{t('scrambleLabel')}: </span>
-            <code style={{ color: '#ffd700' }}>{scrambleAlg}</code>
+          <div className="card moves-card">
+            <h4>
+              {t('scrambleLabel')} <small>{t('scrambleMoves', { count: parseAlg(scrambleAlg).length })}</small>
+            </h4>
+            <MoveChips moves={parseAlg(scrambleAlg).map(formatMove)} />
           </div>
         )}
 
         {hasSolution && (
-          <div style={{
-            marginBottom: 12,
-            padding: '8px 12px',
-            background: 'var(--surface)',
-            borderRadius: 6,
-            border: '1px solid var(--border)',
-            fontSize: '0.85rem',
-          }}>
-            <span style={{ color: 'var(--text-muted)' }}>{t('solutionLabel')}: </span>
-            <code style={{ color: '#90caf9' }}>{formatAlg(solutionMoves)}</code>
-            <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>
-              ({t('movesCount', { count: solutionMoves.length })})
-            </span>
+          <div className="card moves-card">
+            <h4>
+              {t('solutionLabel')}{' '}
+              <small>
+                {t('movesCount', { count: solutionMoves.length })}
+                {solveSeconds !== null && ` · ${t('solvedIn', { seconds: solveSeconds.toFixed(1) })}`}
+              </small>
+            </h4>
+            <MoveChips moves={solutionMoves.map(formatMove)} current={currentMoveIndex} />
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-          <button
-            onClick={() => setActiveView('3d')}
-            style={{ background: activeView === '3d' ? 'var(--accent)' : undefined }}
-          >
-            {t('view3d')}
-          </button>
-          <button
-            onClick={() => setActiveView('2d')}
-            style={{ background: activeView === '2d' ? 'var(--accent)' : undefined }}
-          >
-            {t('view2d')}
-          </button>
-          {hasVision && (
-            <button
-              onClick={() => setActiveView('detector')}
-              style={{ background: activeView === 'detector' ? 'var(--accent)' : undefined }}
-            >
-              📷 Detector
-            </button>
+        <div className={`stage${activeView === '2d' || !isCubeView ? ' plain' : ''}`}>
+          <div className="seg" role="tablist">
+            {views.map(view => (
+              <button
+                key={view.id}
+                role="tab"
+                aria-selected={activeView === view.id}
+                className={activeView === view.id ? 'on' : ''}
+                onClick={() => setActiveView(view.id)}
+              >
+                {view.label}
+              </button>
+            ))}
+          </div>
+          {activeView === '3d' && (
+            <>
+              <Cube3D state={cubeState} size={cubeSize} />
+              <div className="tip">{t('dragHint')}</div>
+            </>
           )}
-          {isDevMode && (
-            <button
-              onClick={() => setActiveView('debug')}
-              style={{ background: activeView === 'debug' ? 'var(--accent)' : undefined }}
-            >
-              🛠️ Debug live
-            </button>
-          )}
-        </div>
-
-        <div style={{
-          borderRadius: 8,
-          overflow: 'hidden',
-          border: '1px solid var(--border)',
-          marginBottom: 16,
-        }}>
-          {activeView === '3d' ? (
-            <Cube3D state={cubeState} size={cubeSize} />
-          ) : activeView === '2d' ? (
-            <div style={{ padding: 24, background: 'var(--surface)' }}>
-              <CubeNet state={cubeState} size={cubeSize} />
-            </div>
-          ) : activeView === 'debug' ? (
-            <DebugDetector liveMode />
-          ) : (
-            <CubeDetector onCubeDetected={handleCubeDetected} />
-          )}
+          {activeView === '2d' && <CubeNet state={cubeState} size={cubeSize} />}
+          {activeView === 'debug' && <DebugDetector liveMode />}
+          {activeView === 'detector' && <CubeDetector onCubeDetected={handleCubeDetected} />}
         </div>
 
         <AnimationControls />
       </main>
-    </div>
+    </>
   )
 }

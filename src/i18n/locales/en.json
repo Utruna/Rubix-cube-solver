@@ -20,5 +20,14 @@
   "noSolution": "No solution yet",
   "cubeIsSolved": "Cube is already solved",
   "view3d": "3D View",
-  "view2d": "2D Net"
+  "view2d": "2D Net",
+  "subtitle": "Scramble a 2×2, 3×3 or 4×4, let the solver work it out, then replay the solution move by move.",
+  "dragHint": "Drag to rotate · scroll to zoom",
+  "solvingHint": "The first solve of a session builds its lookup tables, which can take a few seconds.",
+  "solvedIn": "in {{seconds}} s",
+  "scrambleMoves": "{{count}} moves",
+  "size2": "2×2",
+  "size3": "3×3",
+  "size4": "4×4",
+  "size5": "5×5"
 }

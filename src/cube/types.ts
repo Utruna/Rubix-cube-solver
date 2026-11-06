@@ -13,11 +13,12 @@ export type CubeState = StickerColor[]
 
 export const FACE_ORDER: Face[] = ['U', 'R', 'F', 'D', 'L', 'B']
 
+/** Couleurs des autocollants (palette système sombre : vives sans être criardes). */
 export const FACE_COLORS: Record<Face, string> = {
-  U: '#ffffff',
-  R: '#ff4500',
-  F: '#00aa00',
-  D: '#ffdd00',
-  L: '#ff6600',
-  B: '#0044ff',
+  U: '#f5f5f7',
+  R: '#ff3b30',
+  F: '#34c759',
+  D: '#ffcc00',
+  L: '#ff9500',
+  B: '#0a7aff',
 }

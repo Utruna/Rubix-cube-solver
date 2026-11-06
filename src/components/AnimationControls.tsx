@@ -56,35 +56,30 @@ export function AnimationControls() {
   const isAtStart = currentMoveIndex <= 0
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 12,
-      padding: '12px 16px',
-      background: 'var(--surface)',
-      borderRadius: 8,
-      border: '1px solid var(--border)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={stepBackward} disabled={isAtStart || animStatus === 'playing'}>
-          {t('stepBackward')}
+    <div className="card player">
+      <div className="player-row">
+        <button className="icon-btn" onClick={stepBackward} disabled={isAtStart || animStatus === 'playing'} aria-label={t('stepBackward')} title={t('stepBackward')}>
+          <svg viewBox="0 0 24 24"><path d="M15.4 5.4 14 4l-8 8 8 8 1.4-1.4L8.8 12z" /></svg>
         </button>
         {animStatus === 'playing' ? (
-          <button onClick={pauseAnimation}>{t('pause')}</button>
+          <button className="icon-btn big" onClick={pauseAnimation} aria-label={t('pause')} title={t('pause')}>
+            <svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z" /></svg>
+          </button>
         ) : (
-          <button onClick={playAnimation} disabled={isAtEnd}>{t('play')}</button>
+          <button className="icon-btn big" onClick={playAnimation} disabled={isAtEnd} aria-label={t('play')} title={t('play')}>
+            <svg viewBox="0 0 24 24"><path d="M8 4.5v15l12-7.5z" /></svg>
+          </button>
         )}
-        <button onClick={stepForward} disabled={isAtEnd || animStatus === 'playing'}>
-          {t('stepForward')}
+        <button className="icon-btn" onClick={stepForward} disabled={isAtEnd || animStatus === 'playing'} aria-label={t('stepForward')} title={t('stepForward')}>
+          <svg viewBox="0 0 24 24"><path d="M8.6 5.4 10 4l8 8-8 8-1.4-1.4 6.6-6.6z" /></svg>
         </button>
-        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-          {t('moveProgress', { current: currentMoveIndex, total })}
-        </span>
+        <span className="progress-label">{t('moveProgress', { current: currentMoveIndex, total })}</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-          {t('speed')}: {animSpeed}x
-        </label>
+      <div className="progress" aria-hidden>
+        <div style={{ width: `${(currentMoveIndex / total) * 100}%` }} />
+      </div>
+      <label className="speed">
+        <span>{t('speed')} {animSpeed}×</span>
         <input
           type="range"
           min={0.5}
@@ -92,9 +87,8 @@ export function AnimationControls() {
           step={0.5}
           value={animSpeed}
           onChange={e => setAnimSpeed(parseFloat(e.target.value))}
-          style={{ flex: 1 }}
         />
-      </div>
+      </label>
     </div>
   )
 }

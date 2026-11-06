@@ -20,5 +20,14 @@
   "noSolution": "Pas encore de solution",
   "cubeIsSolved": "Le cube est déjà résolu",
   "view3d": "Vue 3D",
-  "view2d": "Vue 2D"
+  "view2d": "Vue 2D",
+  "subtitle": "Mélange un 2×2, 3×3 ou 4×4, laisse le solveur le résoudre, puis rejoue la solution coup par coup.",
+  "dragHint": "Glisse pour tourner · molette pour zoomer",
+  "solvingHint": "La première résolution d'une session construit ses tables de recherche, ce qui peut prendre quelques secondes.",
+  "solvedIn": "en {{seconds}} s",
+  "scrambleMoves": "{{count}} mouvements",
+  "size2": "2×2",
+  "size3": "3×3",
+  "size4": "4×4",
+  "size5": "5×5"
 }

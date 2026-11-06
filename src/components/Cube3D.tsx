@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { isSolved } from '../cube/state'
 import type { CubeSize, CubeState, Face, Move } from '../cube/types'
 import { FACE_COLORS } from '../cube/types'
 import { faceOffset } from '../cube/state'
@@ -11,12 +14,12 @@ interface Props {
   size: CubeSize
 }
 
-const CAMERA_POSITION: [number, number, number] = [3.8, 3.3, 3.8]
-const CAMERA_FOV = 47
+const CAMERA_POSITION: [number, number, number] = [5.9, 5.2, 5.9]
+const CAMERA_FOV = 36
 const MIN_POLAR = 0.25
 const MAX_POLAR = Math.PI - 0.25
-const MIN_RADIUS = 3
-const MAX_RADIUS = 12
+const MIN_RADIUS = 6
+const MAX_RADIUS = 18
 
 type Axis = 'x' | 'y' | 'z'
 type Layer = 'min' | 'max'
@@ -155,26 +158,162 @@ function keyFromCubie(cubie: CubieInfo) {
   return `${cubie.ix},${cubie.iy},${cubie.iz}`
 }
 
+// ---- Rendu d'un cubie : corps en plastique noir + autocollants arrondis légèrement en relief ----
+
+const BODY_COLOR = '#0c0c0e'
+const IDLE_SPIN_SPEED = 0.14 // rad/s
+const IDLE_DELAY_MS = 1800
+const CELEBRATION_MS = 1700
+
+const BODY_MATERIAL = new THREE.MeshPhysicalMaterial({
+  color: BODY_COLOR,
+  roughness: 0.5,
+  metalness: 0.05,
+  clearcoat: 0.35,
+  clearcoatRoughness: 0.35,
+})
+const STICKER_MATERIALS = Object.fromEntries(
+  (Object.keys(FACE_COLORS) as Face[]).map(face => [
+    face,
+    new THREE.MeshPhysicalMaterial({
+      color: FACE_COLORS[face],
+      roughness: 0.5,
+      metalness: 0,
+      clearcoat: 0.25,
+      clearcoatRoughness: 0.38,
+    }),
+  ]),
+) as Record<Face, THREE.MeshPhysicalMaterial>
+
+const STICKER_ROTATION: Record<Face, [number, number, number]> = {
+  R: [0, Math.PI / 2, 0],
+  L: [0, -Math.PI / 2, 0],
+  U: [-Math.PI / 2, 0, 0],
+  D: [Math.PI / 2, 0, 0],
+  F: [0, 0, 0],
+  B: [0, Math.PI, 0],
+}
+
+const STICKER_RELIEF = 0.014
+
+/** Autocollant : carré arrondi avec un petit biseau, qui accroche la lumière sur ses bords. */
+function roundedSticker(width: number, radius: number): THREE.ExtrudeGeometry {
+  const x = -width / 2
+  const y = -width / 2
+  const shape = new THREE.Shape()
+  shape.moveTo(x + radius, y)
+  shape.lineTo(x + width - radius, y)
+  shape.quadraticCurveTo(x + width, y, x + width, y + radius)
+  shape.lineTo(x + width, y + width - radius)
+  shape.quadraticCurveTo(x + width, y + width, x + width - radius, y + width)
+  shape.lineTo(x + radius, y + width)
+  shape.quadraticCurveTo(x, y + width, x, y + width - radius)
+  shape.lineTo(x, y + radius)
+  shape.quadraticCurveTo(x, y, x + radius, y)
+  return new THREE.ExtrudeGeometry(shape, {
+    depth: 0.002,
+    bevelEnabled: true,
+    bevelThickness: STICKER_RELIEF,
+    bevelSize: STICKER_RELIEF * 0.9,
+    bevelSegments: 3,
+    curveSegments: 8,
+  })
+}
+
+const geometryCache = new Map<number, { body: THREE.BufferGeometry; sticker: THREE.BufferGeometry; half: number }>()
+
+function getCubieGeometry(size: number) {
+  let entry = geometryCache.get(size)
+  if (!entry) {
+    const spacing = 2 / Math.max(1, size - 1)
+    const cubieSize = spacing * 0.96
+    entry = {
+      body: new RoundedBoxGeometry(cubieSize, cubieSize, cubieSize, 4, cubieSize * 0.13),
+      sticker: roundedSticker(cubieSize * 0.78, cubieSize * 0.16),
+      half: cubieSize / 2 - 0.004,
+    }
+    geometryCache.set(size, entry)
+  }
+  return entry
+}
+
 function Cubie({ cubie, state, size }: { cubie: CubieInfo; state: CubeState; size: CubeSize }) {
-  const spacing = 2 / Math.max(1, size - 1)
-  const cubieSize = spacing * 0.92
-
-  const materials = useMemo(() => {
-    return FACE_DIRS.map(dir => {
-      const idx = getStickerIndex(cubie.ix, cubie.iy, cubie.iz, dir, size)
-      const color = idx !== null ? FACE_COLORS[state[idx] as Face] : '#1a1a1a'
-      return new THREE.MeshStandardMaterial({ color })
-    })
-  }, [cubie.ix, cubie.iy, cubie.iz, size, state])
-
+  const { body, sticker, half } = getCubieGeometry(size)
   return (
-    <mesh position={cubie.pos} castShadow>
-      <boxGeometry args={[cubieSize, cubieSize, cubieSize]} />
-      {materials.map((mat, i) => (
-        <primitive key={i} object={mat} attach={`material-${i}`} />
-      ))}
+    <group position={cubie.pos}>
+      <mesh geometry={body} material={BODY_MATERIAL} />
+      {FACE_DIRS.map(dir => {
+        const idx = getStickerIndex(cubie.ix, cubie.iy, cubie.iz, dir, size)
+        if (idx === null) return null
+        return (
+          <mesh
+            key={dir.face}
+            geometry={sticker}
+            material={STICKER_MATERIALS[state[idx] as Face]}
+            position={[dir.normal[0] * half, dir.normal[1] * half, dir.normal[2] * half]}
+            rotation={STICKER_ROTATION[dir.face]}
+          />
+        )
+      })}
+    </group>
+  )
+}
+
+/** Extension d'un cube de `size` (pour ramener tous les formats à la même taille à l'écran). */
+const extentOf = (size: number) => 1 + 0.96 / Math.max(1, size - 1)
+const NORMALIZED_EXTENT = 1.5
+
+/** Ombre douce sous le cube (plus légère et plus nette qu'une vraie ombre portée). */
+function GroundShadow() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 256
+    const ctx = canvas.getContext('2d')!
+    const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128)
+    gradient.addColorStop(0, 'rgba(0,0,0,0.92)')
+    gradient.addColorStop(0.45, 'rgba(0,0,0,0.5)')
+    gradient.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, 256, 256)
+    return new THREE.CanvasTexture(canvas)
+  }, [])
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -NORMALIZED_EXTENT - 0.28, 0]}>
+      <planeGeometry args={[8.5, 8.5]} />
+      <meshBasicMaterial map={texture} transparent depthWrite={false} />
     </mesh>
   )
+}
+
+/** Lumière qui suit la caméra : les faces visibles restent bien éclairées sous tous les angles. */
+function CameraLight() {
+  const light = useRef<THREE.DirectionalLight>(null)
+  useFrame(({ camera }) => {
+    if (!light.current) return
+    light.current.position.copy(camera.position)
+    light.current.position.y += 2.5
+    light.current.position.x -= 1.5
+  })
+  return <directionalLight ref={light} intensity={0.85} />
+}
+
+/** Reflets réalistes : une petite pièce éclairée sert d'environnement aux plastiques vernis. */
+function StudioEnvironment() {
+  const { gl, scene } = useThree()
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl)
+    const room = new RoomEnvironment()
+    const target = pmrem.fromScene(room, 0.04)
+    scene.environment = target.texture
+    scene.environmentIntensity = 0.38
+    return () => {
+      scene.environment = null
+      target.dispose()
+      pmrem.dispose()
+      room.dispose()
+    }
+  }, [gl, scene])
+  return null
 }
 
 function SimpleOrbitControls() {
@@ -200,6 +339,10 @@ function SimpleOrbitControls() {
     let dragging = false
     let lastX = 0
     let lastY = 0
+    let lastInteraction = performance.now()
+    let frame = 0
+    let lastTick = performance.now()
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
     const updateCamera = () => {
       const sinPhi = Math.sin(state.phi)
@@ -213,9 +356,39 @@ function SimpleOrbitControls() {
 
     updateCamera()
 
+    // Rotation lente quand personne n'y touche (la vue reste libre dès qu'on glisse ou qu'on zoome).
+    // Tour complet de la vue quand le cube vient d'être résolu.
+    let celebration: { from: number; start: number } | null = null
+    const onCelebrate = () => {
+      celebration = { from: state.theta, start: performance.now() }
+    }
+    window.addEventListener('cube-solved', onCelebrate)
+
+    const idleSpin = (now: number) => {
+      if (celebration) {
+        const t = Math.min(1, (now - celebration.start) / CELEBRATION_MS)
+        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+        state.theta = celebration.from - eased * Math.PI * 2
+        updateCamera()
+        if (t >= 1) celebration = null
+        lastTick = now
+        frame = requestAnimationFrame(idleSpin)
+        return
+      }
+      const dt = Math.min(0.05, (now - lastTick) / 1000)
+      lastTick = now
+      if (!reduceMotion && !dragging && now - lastInteraction > IDLE_DELAY_MS) {
+        state.theta += IDLE_SPIN_SPEED * dt
+        updateCamera()
+      }
+      frame = requestAnimationFrame(idleSpin)
+    }
+    frame = requestAnimationFrame(idleSpin)
+
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) return
       dragging = true
+      lastInteraction = performance.now()
       lastX = event.clientX
       lastY = event.clientY
       dom.setPointerCapture(event.pointerId)
@@ -227,6 +400,7 @@ function SimpleOrbitControls() {
       const dy = event.clientY - lastY
       lastX = event.clientX
       lastY = event.clientY
+      lastInteraction = performance.now()
 
       state.theta -= dx * 0.01
       state.phi = clamp(state.phi + dy * 0.01, MIN_POLAR, MAX_POLAR)
@@ -242,6 +416,7 @@ function SimpleOrbitControls() {
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
+      lastInteraction = performance.now()
       state.radius = clamp(state.radius + event.deltaY * 0.005, MIN_RADIUS, MAX_RADIUS)
       updateCamera()
     }
@@ -253,6 +428,8 @@ function SimpleOrbitControls() {
     dom.addEventListener('wheel', onWheel, { passive: false })
 
     return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('cube-solved', onCelebrate)
       dom.removeEventListener('pointerdown', onPointerDown)
       dom.removeEventListener('pointermove', onPointerMove)
       dom.removeEventListener('pointerup', onPointerUp)
@@ -267,9 +444,11 @@ function SimpleOrbitControls() {
 export function Cube3D({ state, size }: Props) {
   return (
     <Canvas
+      flat
+      dpr={[1, 2]}
       camera={{ position: CAMERA_POSITION, fov: CAMERA_FOV }}
-      style={{ width: '100%', height: '420px', background: '#1a1a2e' }}
-      shadows
+      gl={{ antialias: true, alpha: true }}
+      style={{ width: '100%', height: '100%', background: 'transparent' }}
     >
       <CubeScene state={state} size={size} />
     </Canvas>
@@ -314,7 +493,8 @@ function CubeScene({ state, size }: Props) {
       processedMoveRef.current = lastAppliedMove.sequence
       const signed = moveToSigned(lastAppliedMove.move)
       const width = Math.max(1, Math.min(lastAppliedMove.move.width ?? 1, Math.floor(size / 2)))
-      const durationMs = Math.max(90, 260 / Math.max(animSpeed, 0.1))
+      // Un peu plus court que l'intervalle de lecture (1 s / vitesse) : les coups s'enchaînent sans à-coup.
+      const durationMs = Math.min(700, Math.max(120, 780 / Math.max(animSpeed, 0.1)))
       const anim: ActiveAnimation = {
         axis: signed.axis,
         layer: signed.layer,
@@ -339,6 +519,16 @@ function CubeScene({ state, size }: Props) {
     }
     prevStateRef.current = state
   }, [state, lastAppliedMove, animSpeed, size])
+
+  // Petite célébration (tour de vue) quand un coup vient de résoudre le cube.
+  const wasSolvedRef = useRef(isSolved(state, size))
+  useEffect(() => {
+    const nowSolved = isSolved(displayState, size)
+    if (nowSolved && !wasSolvedRef.current && processedMoveRef.current > 0 && !activeAnimRef.current) {
+      window.dispatchEvent(new Event('cube-solved'))
+    }
+    wasSolvedRef.current = nowSolved
+  }, [displayState, size])
 
   useFrame((_, delta) => {
     const anim = activeAnimRef.current
@@ -377,10 +567,12 @@ function CubeScene({ state, size }: Props) {
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
-      <directionalLight position={[-5, -5, -5]} intensity={0.2} />
-      <group>
+      <StudioEnvironment />
+      <hemisphereLight args={['#ffffff', '#44444c', 0.5]} />
+      <directionalLight position={[3, 8, 2]} intensity={0.3} />
+      <CameraLight />
+      <GroundShadow />
+      <group scale={NORMALIZED_EXTENT / extentOf(size)}>
         {cubiesByLayer.fixed.map(cubie => (
           <Cubie key={`fixed-${keyFromCubie(cubie)}`} cubie={cubie} state={displayState} size={size} />
         ))}

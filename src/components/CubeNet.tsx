@@ -8,12 +8,12 @@ interface Props {
 }
 
 // Pixel dimensions for each sticker cell and gap between cells
-const CELL = 28
-const GAP = 2
+const CELL = 30
+const GAP = 3
 
 export function CubeNet({ state, size }: Props) {
   const faceSize = CELL * size + GAP * (size - 1)
-  const padding = 4
+  const padding = 18
 
   const positions: Array<{ face: Face; row: number; col: number }> = [
     { face: 'U', row: 0, col: 1 },
@@ -25,17 +25,18 @@ export function CubeNet({ state, size }: Props) {
   ]
 
   const totalW = 4 * (faceSize + padding) + padding
-  const totalH = 3 * (faceSize + padding) + padding
+  const totalH = 3 * (faceSize + padding) + padding + 8
 
   return (
     <div style={{ overflowX: 'auto' }}>
       <svg width={totalW} height={totalH} style={{ display: 'block', margin: '0 auto' }}>
         {positions.map(({ face, row, col }) => {
           const x = padding + col * (faceSize + padding)
-          const y = padding + row * (faceSize + padding)
+          const y = padding + 6 + row * (faceSize + padding)
           return (
             <g key={face} transform={`translate(${x},${y})`}>
-              <text x={faceSize / 2} y={-4} textAnchor="middle" fill="#aaa" fontSize={10}>{face}</text>
+              <rect x={-5} y={-5} width={faceSize + 10} height={faceSize + 10} rx={10} fill="#0c0c0e" />
+              <text x={faceSize / 2} y={-11} textAnchor="middle" fill="#86868b" fontSize={11} fontWeight={600}>{face}</text>
               {Array.from({ length: size * size }, (_, i) => {
                 const r = Math.floor(i / size)
                 const c = i % size
@@ -48,9 +49,7 @@ export function CubeNet({ state, size }: Props) {
                     width={CELL}
                     height={CELL}
                     fill={color}
-                    stroke="#333"
-                    strokeWidth={1}
-                    rx={3}
+                    rx={6}
                   />
                 )
               })}
