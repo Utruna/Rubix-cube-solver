@@ -6,7 +6,7 @@ Application interactive de Rubik's Cube construite avec Vite, React et TypeScrip
 
 - Vue 3D interactive (drag + zoom) via Three.js et React Three Fiber
 - Vue 2D (net) en SVG
-- Support des tailles 2x2, 3x3, 4x4 et 5x5
+- Support des tailles 2x2, 3x3, 4x4 et 5x5 (solver complet en 2x2, 3x3 et 4x4)
 - Scramble adapte a la taille du cube
 	- 4x4 et 5x5: mouvements wide (Rw, Uw, etc.) pour melanger les centres
 - Resolution dans un Web Worker (UI non bloquante)
@@ -15,12 +15,20 @@ Application interactive de Rubik's Cube construite avec Vite, React et TypeScrip
 
 ## Comportement du solver
 
-- **3x3** : algorithme de Kociemba a deux phases, pour **n'importe quel etat valide** (pas seulement un scramble de l'application).
+Tous les solvers tournent dans un Web Worker (repli sur le thread principal si le worker est indisponible).
+
+- **2x2** : solution **optimale** (11 mouvements au plus). Le coin DLB est fige et les 3 674 160 etats restants sont parcourus par BFS. Les couleurs sont renommees d'apres ce coin, car le 2x2 n'a pas de centres.
+- **3x3** : algorithme de Kociemba a deux phases, pour **n'importe quel etat valide**.
   - Le meme etat est cherche sous 6 angles (3 orientations du cube x cube/cube inverse) et la plus courte solution est conservee.
-  - Budget par defaut : 1,5 s (arret anticipe des qu'une solution de 20 mouvements ou moins est trouvee). En moyenne ~20 mouvements, contre ~25 pour l'inversion du scramble.
+  - Budget par defaut : 1,5 s (arret anticipe des qu'une solution de 20 mouvements ou moins est trouvee). En moyenne ~20 mouvements.
   - Les etats impossibles (coin tourne, arete retournee, pieces echangees, mauvaise repartition des couleurs) sont detectes et signales.
-  - Les tables (~4 s a la premiere resolution) sont construites une fois dans le Web Worker.
-- **2x2, 4x4, 5x5** : pas encore de solver dedie, seule l'inversion du scramble de l'application fonctionne.
+- **4x4** : methode par reduction, pour n'importe quel etat valide (~90 mouvements en moyenne, quelques secondes).
+  1. Centres en 3 etapes (U/D, puis L/R, puis le reste), chacune par BFS sur un masque de 24 bits.
+  2. Appariement des aretes : bibliotheque de ~117 000 commutateurs qui preservent les centres, jouee de facon gloutonne.
+  3. Le cube reduit est resolu par le solver 3x3. Les parites OLL (arete retournee) et PLL (permutation impaire) sont corrigees avec les algorithmes classiques, aussi utilises pour debloquer l'appariement.
+- **5x5** : pas encore de solver dedie, seule l'inversion du scramble de l'application fonctionne.
+
+Les tables du 3x3 (~4 s) et la bibliotheque du 4x4 (~8 s) sont construites une fois, a la premiere resolution.
 
 ## Tests
 
@@ -28,7 +36,7 @@ Application interactive de Rubik's Cube construite avec Vite, React et TypeScrip
 npm test
 ```
 
-Couvre le moteur de mouvements (sens de rotation, inverses, mouvements larges), les cubies/coordonnees, la validation des etats invalides et le solver (aleatoire, superflip, mouvements courts).
+Couvre le moteur de mouvements (sens de rotation, inverses, mouvements larges), les cubies/coordonnees, la validation des etats invalides et les solvers 2x2, 3x3 et 4x4 (melanges aleatoires, superflip, parites OLL/PLL).
 
 ## Stack technique
 
@@ -48,7 +56,7 @@ src/
 ├── components/    # Cube3D, CubeNet, AnimationControls
 ├── cube/          # Types, etat NxN, moves, notation, scramble
 ├── i18n/          # Provider/hook de traduction + locales EN/FR
-├── solver/        # index (dispatch), kociemba/ (cubies, coords, tables, search), worker, hook useSolver
+├── solver/        # index (dispatch), kociemba/ (3x3), twoByTwo, fourByFour/ (4x4), worker, hook useSolver
 ├── store/         # Store global React Context + useReducer
 ├── App.tsx        # UI principale
 └── main.tsx       # Bootstrap React
