@@ -15,15 +15,20 @@ Application interactive de Rubik's Cube construite avec Vite, React et TypeScrip
 
 ## Comportement du solver
 
-Le solver interne fonctionne en deux etapes:
+- **3x3** : algorithme de Kociemba a deux phases, pour **n'importe quel etat valide** (pas seulement un scramble de l'application).
+  - Le meme etat est cherche sous 6 angles (3 orientations du cube x cube/cube inverse) et la plus courte solution est conservee.
+  - Budget par defaut : 1,5 s (arret anticipe des qu'une solution de 20 mouvements ou moins est trouvee). En moyenne ~20 mouvements, contre ~25 pour l'inversion du scramble.
+  - Les etats impossibles (coin tourne, arete retournee, pieces echangees, mauvaise repartition des couleurs) sont detectes et signales.
+  - Les tables (~4 s a la premiere resolution) sont construites une fois dans le Web Worker.
+- **2x2, 4x4, 5x5** : pas encore de solver dedie, seule l'inversion du scramble de l'application fonctionne.
 
-1. Strategie principale: inversion du scramble
-2. Fallback borne (actif en 3x3)
+## Tests
 
-Implication pratique:
+```bash
+npm test
+```
 
-- Si le cube vient du bouton Scramble de l'application, la resolution fonctionne de maniere fiable
-- Pour des etats arbitraires complexes (notamment 4x4/5x5), le fallback peut ne pas trouver de solution
+Couvre le moteur de mouvements (sens de rotation, inverses, mouvements larges), les cubies/coordonnees, la validation des etats invalides et le solver (aleatoire, superflip, mouvements courts).
 
 ## Stack technique
 
@@ -43,7 +48,7 @@ src/
 ├── components/    # Cube3D, CubeNet, AnimationControls
 ├── cube/          # Types, etat NxN, moves, notation, scramble
 ├── i18n/          # Provider/hook de traduction + locales EN/FR
-├── solver/        # Worker de resolution + hook useSolver
+├── solver/        # index (dispatch), kociemba/ (cubies, coords, tables, search), worker, hook useSolver
 ├── store/         # Store global React Context + useReducer
 ├── App.tsx        # UI principale
 └── main.tsx       # Bootstrap React
