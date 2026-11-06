@@ -101,6 +101,11 @@ function isInLayerBand(pos: Vec3, axis: Axis, layer: Layer, width: number, size:
   return pos.z >= lower && pos.z <= upper
 }
 
+/** Position 3D et normale de chaque sticker (indice = indice dans `CubeState`). */
+export function getStickerGeometry(size: CubeSize): { pos: Vec3; normal: Vec3 }[] {
+  return buildBaseStickers(size)
+}
+
 function buildBaseStickers(size: number): Sticker[] {
   const result: Sticker[] = []
   for (const face of FACE_ORDER) {
@@ -135,7 +140,8 @@ function buildPermutation(face: Face, size: number, width: number): number[] {
 
 const permutationCache = new Map<string, number[]>()
 
-function getPermutationWithWidth(face: Face, size: number, width: number): number[] {
+/** Permutation d'un quart de tour : `nouveau[i] = ancien[perm[i]]`. */
+export function getPermutationWithWidth(face: Face, size: number, width: number): number[] {
   const key = `${face}:${size}:${width}`
   const existing = permutationCache.get(key)
   if (existing) return existing

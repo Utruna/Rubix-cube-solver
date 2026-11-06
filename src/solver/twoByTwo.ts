@@ -1,7 +1,8 @@
-import type { CubeState, Face, Move } from '../cube/types'
+import type { CubeState, Move } from '../cube/types'
 import { FACE_ORDER } from '../cube/types'
 import { validateStateBasic } from '../cube/state'
-import { CORNER_FACELETS, InvalidCubeError, MOVE_CUBES, decodeCorners } from './kociemba/cubie'
+import { InvalidCubeError, MOVE_CUBES, decodeCorners } from './kociemba/cubie'
+import { cornerStickerIndex, normalizeColors } from './frame'
 import { buildPruning } from './kociemba/tables'
 import { indexToPerm, permToIndex } from './kociemba/coords'
 
@@ -72,46 +73,13 @@ function orientationsToTwist(co: number[]): number {
   return t
 }
 
-/** Indice 3x3 d'un sticker de coin -> indice dans l'état 2x2 (4 stickers par face). */
-function index3x3To2x2(i: number): number {
-  const face = Math.floor(i / 9)
-  const row = Math.floor((i % 9) / 3) / 2
-  const col = (i % 3) / 2
-  return face * 4 + row * 2 + col
-}
-
-/**
- * Le 2x2 n'a pas de centres : on renomme les couleurs pour que le coin DLB lise (D, B, L).
- * Les trois autres couleurs sont les opposées, déduites des coins voisins.
- */
-function normalizeColors(state: CubeState): CubeState {
-  const [d, b, l] = CORNER_FACELETS[FIXED_CORNER].map(i => state[index3x3To2x2(i)])
-  const cornersOf = (face: Face) => CORNER_FACELETS.map(f => f.map(i => state[index3x3To2x2(i)])).filter(c => c.includes(face))
-  const opposite = (x: Face, y: Face, z: Face): Face | undefined => {
-    const corner = cornersOf(x).find(c => c.includes(y) && !c.includes(z))
-    return corner?.find(c => c !== x && c !== y)
-  }
-  // Coin partageant deux des couleurs de DLB : sa troisième couleur est l'opposée de la restante.
-  const oppL = opposite(d, b, l)
-  const oppB = opposite(d, l, b)
-  const oppD = opposite(b, l, d)
-  const rename = new Map<Face, Face>([[d, 'D'], [b, 'B'], [l, 'L']])
-  if (oppL) rename.set(oppL, 'R')
-  if (oppB) rename.set(oppB, 'F')
-  if (oppD) rename.set(oppD, 'U')
-  if (new Set(rename.values()).size !== 6 || rename.size !== 6) {
-    throw new InvalidCubeError('bad-corner', 'The 2x2 colors are inconsistent (invalid cube).')
-  }
-  return state.map(c => rename.get(c)!)
-}
-
 /** Solution optimale d'un 2x2 (lève `InvalidCubeError` si l'état est impossible). */
 export function solve2x2(state: CubeState): Move[] {
   if (!validateStateBasic(state, 2)) {
     throw new InvalidCubeError('bad-color-count', 'Each color must appear exactly 4 times.')
   }
-  const colors = normalizeColors(state)
-  const { cp, co } = decodeCorners(i => colors[index3x3To2x2(i)])
+  const colors = normalizeColors(state, 2)
+  const { cp, co } = decodeCorners(i => colors[cornerStickerIndex(i, 2)])
   if (cp[FIXED_CORNER] !== FIXED_CORNER || co[FIXED_CORNER] !== 0 || co.reduce((a, b) => a + b, 0) % 3 !== 0) {
     throw new InvalidCubeError('twisted-corner', 'A corner is twisted in place (invalid cube).')
   }
