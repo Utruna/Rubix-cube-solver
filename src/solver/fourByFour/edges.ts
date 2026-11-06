@@ -183,10 +183,16 @@ function getParityCandidates(depth: number): Macro[] {
 }
 
 /** Apparie les 12 arêtes (les centres doivent déjà être résolus). */
+export class PairingGaveUp extends Error {}
+
+/** Au-delà de ce nombre de corrections de parité, on préfère repartir d'une autre configuration. */
+const MAX_PARITY_FIXES = 3
+
 export function pairEdges(
   initial: Uint8Array,
   trace?: (message: string) => void,
 ): { state: Uint8Array; moves: number[] } {
+  let parityFixes = 0
   let state = initial
   let paired = pairedEdges(state)
   const played: number[] = []
@@ -231,7 +237,7 @@ export function pairEdges(
       }
     }
     const chosen = unlocking ?? fallback
-    if (!chosen) throw new Error('Edge pairing is stuck.')
+    if (!chosen || ++parityFixes > MAX_PARITY_FIXES) throw new PairingGaveUp('Edge pairing is stuck.')
     play(chosen)
     trace?.(`step ${step}: STUCK, played parity fix -> ${popcount(paired)} pairs`)
   }

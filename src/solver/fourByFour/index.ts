@@ -5,7 +5,7 @@ import { solve3x3 } from '../kociemba'
 import type { Solve3x3Options } from '../kociemba'
 import { normalizeColors } from '../frame'
 import { centersSolved, solveCenters } from './centers'
-import { pairEdges } from './edges'
+import { PairingGaveUp, pairEdges } from './edges'
 import { applyMoveId, decodeState, encodeState, moveId, toMoves } from './geometry'
 import { PARITY_FIXES } from './parity'
 import { FACE_ORDER } from '../../cube/types'
@@ -23,6 +23,8 @@ export function reduceTo3x3(state: Uint8Array): CubeState {
   }
   return out
 }
+
+const MAX_PAIRING_ATTEMPTS = 8
 
 /** Fusionne les mouvements consécutifs sur la même couche (R R -> R2, R R' -> rien). */
 export function simplifyMoves(moves: Move[]): Move[] {
@@ -65,9 +67,18 @@ export function solve4x4(state: CubeState, options?: Solve3x3Options): Move[] {
   const centers = solveCenters(current)
   current = centers.state
   ids.push(...centers.moves)
-  const pairs = pairEdges(current)
-  current = pairs.state
-  ids.push(...pairs.moves)
+  // Si l'appariement s'enlise, on tourne quelques faces (les centres restent résolus) et on réessaie.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const pairs = pairEdges(current)
+      current = pairs.state
+      ids.push(...pairs.moves)
+      break
+    } catch (err) {
+      if (!(err instanceof PairingGaveUp) || attempt >= MAX_PAIRING_ATTEMPTS) throw err
+      play([(attempt * 5 + 1) % 18, 3 * ((attempt + 2) % 6) + ((attempt + 1) % 3)])
+    }
+  }
   if (!centersSolved(current)) throw new Error('Internal error: centers were disturbed.')
 
   for (let attempt = 0; ; attempt++) {

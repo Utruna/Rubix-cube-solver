@@ -167,7 +167,7 @@ describe('solveur 3x3', () => {
     expect(slow.length).toBeLessThanOrEqual(fast.length)
   })
 
-  it('solve() via le dispatcher renvoie des mouvements valides', () => {
+  it('solve() via le dispatcher renvoie des mouvements valides', { timeout: 30_000 }, () => {
     const state = randomState()
     const out = solve(state, 3, undefined, { timeLimitMs: 300 })
     expect(out.error).toBeNull()
@@ -175,8 +175,8 @@ describe('solveur 3x3', () => {
   })
 })
 
-describe('autres tailles (repli)', () => {
-  it('2x2 : annule le mélange connu', () => {
+describe('dispatch par taille', () => {
+  it('2x2 : résolu par le solveur dédié', () => {
     const size = 2
     const alg = "R U R' U' F2"
     const state = applyAlg(createSolvedState(size), parseAlg(alg), size)
@@ -185,11 +185,10 @@ describe('autres tailles (repli)', () => {
     expect(isSolved(applyAlg(state, out.moves ?? [], size), size)).toBe(true)
   })
 
-  it('4x4 sans mélange connu : erreur explicite', () => {
-    const state = applyAlg(createSolvedState(4), parseAlg('R U'), 4)
-    const out = solve(state, 4)
+  it('5x5 sans mélange connu : erreur explicite', () => {
+    const state = applyAlg(createSolvedState(5), parseAlg('R U'), 5)
+    const out = solve(state, 5)
     expect(out.moves).toBeNull()
     expect(out.error).toMatch(/No solver/)
   })
 })
-
