@@ -3,6 +3,7 @@ from flask_cors import CORS
 from detector import CubeDetector
 import base64
 import logging
+import os
 import sys
 
 app = Flask(__name__)
@@ -11,7 +12,7 @@ detector = CubeDetector()
 
 # Configuration du logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=os.environ.get('LOG_LEVEL', 'INFO').upper(),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     stream=sys.stdout
 )
@@ -92,7 +93,7 @@ def debug_detect():
         provider = (data.get('provider') or '').strip().lower()
         if provider and provider not in {'auto', 'classic', 'ollama', 'yolo'}:
             logger.error("Invalid provider in request: %s", provider)
-            return jsonify({'error': 'Invalid provider. Use auto, classic or ollama'}), 400
+            return jsonify({'error': 'Invalid provider. Use auto, classic, ollama or yolo'}), 400
 
         logger.info("Processing image with debug (provider=%s)...", provider or 'default')
         result = detector.detect_with_debug(image_data, provider_override=provider or None)
@@ -115,5 +116,11 @@ def calibrate():
 
 if __name__ == '__main__':
     logger.info("Starting Flask app...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Le debugger Flask permet d'exécuter du code à distance : désactivé sauf FLASK_DEBUG=1,
+    # et le serveur n'écoute que sur localhost sauf HOST explicite (le Dockerfile utilise gunicorn).
+    app.run(
+        host=os.environ.get('HOST', '127.0.0.1'),
+        port=5000,
+        debug=os.environ.get('FLASK_DEBUG') == '1',
+    )
 

@@ -1,4 +1,3 @@
-import React from 'react'
 import type { CubeSize, CubeState, Face } from '../cube/types'
 import { FACE_COLORS } from '../cube/types'
 import { faceOffset } from '../cube/state'

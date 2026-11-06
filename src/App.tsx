@@ -25,8 +25,9 @@ function LanguageToggle() {
 
 export default function App() {
   const { t } = useTranslation()
+  const hasVision = !import.meta.env.VITE_STANDALONE
   const isDevMode =
-    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    hasVision && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   const {
     cubeSize,
     cubeState,
@@ -164,12 +165,14 @@ export default function App() {
           >
             {t('view2d')}
           </button>
-          <button
-            onClick={() => setActiveView('detector')}
-            style={{ background: activeView === 'detector' ? 'var(--accent)' : undefined }}
-          >
-            📷 Detector
-          </button>
+          {hasVision && (
+            <button
+              onClick={() => setActiveView('detector')}
+              style={{ background: activeView === 'detector' ? 'var(--accent)' : undefined }}
+            >
+              📷 Detector
+            </button>
+          )}
           {isDevMode && (
             <button
               onClick={() => setActiveView('debug')}

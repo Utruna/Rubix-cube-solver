@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from '../i18n'
 import { useCubeStore } from '../store/cubeStore'
 
