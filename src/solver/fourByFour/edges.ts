@@ -111,6 +111,12 @@ function pairedAfter(state: Uint8Array, checks: Uint8Array): number {
   return mask
 }
 
+/** Construit à l'avance la bibliothèque de macros et les corrections de parité courantes. */
+export function warmUpEdges(): void {
+  getEdgeLibrary()
+  getParityCandidates(2)
+}
+
 /** Bit e du masque = l'arête e est appariée, pour `state` vu à travers `perm` (ou tel quel). */
 export function pairedEdges(state: Uint8Array, perm?: Uint8Array): number {
   let mask = 0

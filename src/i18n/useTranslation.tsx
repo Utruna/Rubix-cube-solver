@@ -32,6 +32,9 @@ function interpolate(template: string, values?: TranslationValues): string {
 }
 
 function detectInitialLocale(): Locale {
+  // ?lang=fr|en force la langue (page embarquée dans un autre site) sans toucher au réglage mémorisé.
+  const fromUrl = new URLSearchParams(window.location.search).get('lang')
+  if (fromUrl === 'en' || fromUrl === 'fr') return fromUrl
   const saved = localStorage.getItem(STORAGE_KEY)
   if (saved === 'en' || saved === 'fr') return saved
   const browser = navigator.language.toLowerCase()

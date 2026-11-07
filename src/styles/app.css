@@ -457,3 +457,20 @@ footer.foot {
     grid-area: player;
   }
 }
+
+/* ---- Embarqué (?embed=1) : pas de barre du haut ni de titre, l'iframe fournit le cadre ---- */
+html.embed .topbar,
+html.embed .hero {
+  display: none;
+}
+
+html.embed .page {
+  padding-top: 12px;
+}
+
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) and (min-height: 480px) {
+  html.embed .page {
+    height: 100dvh;
+    padding: 12px;
+  }
+}

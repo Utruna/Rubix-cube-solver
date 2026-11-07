@@ -54,6 +54,9 @@ function getTables(): Tables {
   return cached
 }
 
+/** Construit les tables à l'avance (sinon elles le sont à la première résolution). */
+export const warmUp2x2 = (): void => void getTables()
+
 /** Orientation des 7 coins libres ; la dernière est déterminée par les 6 autres. */
 function twistToOrientations(twist: number): number[] {
   const co = new Array<number>(7)

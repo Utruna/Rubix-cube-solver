@@ -3,8 +3,10 @@ import { isSolved } from '../cube/state'
 import { InvalidCubeError, solve3x3 } from './kociemba'
 import type { Solve3x3Options } from './kociemba'
 import { solveByScrambleInversion } from './scrambleInversion'
-import { solve2x2 } from './twoByTwo'
+import { solve2x2, warmUp2x2 } from './twoByTwo'
 import { solve4x4 } from './fourByFour'
+import { warmUpEdges } from './fourByFour/edges'
+import { getTables } from './kociemba/tables'
 
 export type SolveOutcome = { moves: Move[]; error: null } | { moves: null; error: string }
 
@@ -40,4 +42,14 @@ export function solve(
     moves: null,
     error: `No solver available yet for arbitrary ${size}x${size} states (only the app scramble can be undone).`,
   }
+}
+
+/**
+ * Construit à l'avance les tables dont le solveur de `size` a besoin (quelques secondes), pour que la
+ * première résolution soit immédiate. Sans effet pour les tailles sans solveur dédié.
+ */
+export function warmUp(size: CubeSize): void {
+  if (size === 2) warmUp2x2()
+  if (size === 3 || size === 4) getTables() // le 4x4 termine avec le solveur 3x3
+  if (size === 4) warmUpEdges()
 }

@@ -31,5 +31,6 @@
   "size4": "4×4",
   "size5": "5×5",
   "scrambling": "Mélange…",
-  "noScramble": "Pas encore de mélange"
+  "noScramble": "Pas encore de mélange",
+  "warming": "Préparation du solveur…"
 }

@@ -31,5 +31,6 @@
   "size4": "4×4",
   "size5": "5×5",
   "scrambling": "Scrambling…",
-  "noScramble": "No scramble yet"
+  "noScramble": "No scramble yet",
+  "warming": "Preparing the solver…"
 }

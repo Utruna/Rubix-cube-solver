@@ -68,9 +68,20 @@ export default function App() {
     setCubeState,
   } = useCubeStore()
 
-  const { solve } = useSolver()
+  const { solve, warmUp, isReady } = useSolver()
+
+  // ?embed=1 : page embarquée dans un autre site (iframe), sans barre du haut ni titre.
+  useEffect(() => {
+    const embedded = new URLSearchParams(window.location.search).has('embed')
+    document.documentElement.classList.toggle('embed', embedded)
+  }, [])
   const [activeView, setActiveView] = useState<View>(isDevMode ? 'debug' : '3d')
   const [solveSeconds, setSolveSeconds] = useState<number | null>(null)
+
+  // Prépare le solveur de la taille choisie dès que possible : la première résolution est alors immédiate.
+  useEffect(() => {
+    warmUp(cubeSize)
+  }, [cubeSize, warmUp])
 
   const solved = isSolved(cubeState, cubeSize)
   const hasSolution = solutionMoves.length > 0
@@ -151,6 +162,11 @@ export default function App() {
 
           <span className="grow" />
 
+          {!scrambling && solverStatus !== 'solving' && !isReady(cubeSize) && (
+            <span className="status">
+              <span className="spinner" aria-hidden /> {t('warming')}
+            </span>
+          )}
           {scrambling && (
             <span className="status">
               <span className="spinner" aria-hidden /> {t('scrambling')}
